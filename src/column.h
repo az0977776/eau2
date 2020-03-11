@@ -16,6 +16,40 @@ enum ColumnType {
     STRING = 'S'
 };
 
+/**
+ * 
+ enum ColumnType {
+    type_unknown = -1,
+    type_bool = 0,
+    type_int = 1,
+    type_float = 2,
+    type_string = 3,
+};
+
+// returns the inferred typing of the char*
+ColumnType infer_type(char *c) {
+    // missing values
+    if (c == nullptr) {
+        return type_bool;
+    }
+    // check boolean
+    if (strlen(c) == 1) {
+        if ((*c == '0') || (*c == '1')) {
+            return type_bool;
+        }
+    }
+    // check int
+    if (is_int(c)) {
+        return type_int;
+    }
+    // check float
+    if (is_float(c)) {
+        return type_float;
+    }
+    return type_string;
+}
+ */
+
 class StringColumn;
 class FloatColumn;
 class IntColumn;

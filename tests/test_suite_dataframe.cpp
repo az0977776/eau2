@@ -1,0 +1,25 @@
+#include <gtest/gtest.h>
+
+#include "personal_test_column.h"
+#include "personal_test_schema.h"
+#include "personal_test_row.h"
+#include "personal_test_dataframe.h"
+
+
+int main(int argc, char **argv) {
+    testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
+
+// TESTS TODO:
+/**
+ * exit with error code -1 int, float, string column
+ * column push worng type onto it
+ * StringArray ... is this needed to be tested?
+ * row get/set wrong index
+ * dataframe add_column -- wrong size, nullptr, 
+ * dataframe get_* -- wrong idx, wrong type
+ * dataframe set -- wrong index, wrong type
+ * dataframe add_row/fill_row with different schema
+ * 
+ */
