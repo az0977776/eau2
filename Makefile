@@ -1,14 +1,18 @@
-all: clean build run
+all: clean build test
 
 build:
-	g++ -pthread -O3 -Wall -pedantic -std=c++11 bench.cpp -o bench
+	docker build -t cs4500:0.1 .
+	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test/tests && cmake . && make"
 
-run: build
-	git clone https://github.com/barthch/CS4500-a5p1-data.git || (cd CS4500-a5p1-data ; git pull)
-	unzip -o CS4500-a5p1-data/data.zip
-	./bench
+test: build
+	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test/tests && ./test_dataframe"
+	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test/tests && ./test_sorer"
+
+valgrind: build
+	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test/tests && valgrind --leak-check=yes ./test_dataframe"
+	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test/tests && valgrind --leak-check=yes ./test_sorer"
 
 clean:
-	-rm bench
-	-rm -rf bench.dSYM
-	-rm -rf data.zip data.csv CS4500-a5p1-data
+	-rm -rf tests/CMakeCache.txt
+	-rm tests/test_dataframe
+	-rm tests/test_sorer

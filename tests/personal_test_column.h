@@ -18,12 +18,15 @@ void test_int_column() {
     IntColumn *ic = new IntColumn();
     ASSERT_EQ(ic->size(), 0);
 
-    for (int i = 0 ; i < 5000; i++) {
+    size_t num_elements = 50000;
+
+    for (int i = 0 ; i < num_elements; i++) {
       ic->push_back(i);
     }
 
-    ASSERT_EQ(ic->size(), 5000);
+    ASSERT_EQ(ic->size(), num_elements);
     ASSERT_EQ(ic->get(4999), 4999);
+    ASSERT_EQ(ic->get(num_elements - 1), num_elements - 1);
 
     ic->set(1555, 718237);
     ASSERT_EQ(ic->get(1555), 718237);

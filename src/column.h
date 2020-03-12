@@ -219,6 +219,16 @@ class BoolColumn : public Column {
             va_end(arguments);
         }
 
+        ~BoolColumn() {
+            // deleting the chunks
+            for (size_t i = 0; i <= big_len_; i++) {
+                delete[] data_[i];
+            }
+
+            // deleteing the arrays
+            delete[] data_;
+        }
+
         void check_and_reallocate_() {
             // if small array is full, move to next small array and start from 0
             if (small_len_ >= small_cap_) {
@@ -312,7 +322,7 @@ class IntColumn : public Column {
         }
 
         ~IntColumn() {
-            for (size_t i = 0; i < big_len_; i++) {
+            for (size_t i = 0; i <= big_len_; i++) {
                 delete[] data_[i];
             }
             delete[] data_;
@@ -337,7 +347,7 @@ class IntColumn : public Column {
                 small_len_ = 0;
 
                 // if the big array is full, reallocate and copy over pointers to small arrays
-                if (big_len_ + 1 >= big_cap_) {     
+                if (big_len_ + 1 >= big_cap_) {    
                     big_cap_ *= 2;
                     int** temp = new int*[big_cap_];
                     for (size_t i = 0; i <= big_len_; i++) {
@@ -400,7 +410,7 @@ class FloatColumn : public Column {
         }
 
         ~FloatColumn() {
-            for (size_t i = 0; i < big_len_; i++) {
+            for (size_t i = 0; i <= big_len_; i++) {
                 delete[] data_[i];
             }
             delete[] data_;
@@ -493,7 +503,7 @@ class StringColumn : public Column {
                 delete get(i);
             }
             // delete chunks
-            for (size_t i = 0; i < big_len_; i++) {
+            for (size_t i = 0; i <= big_len_; i++) {
                 delete[] data_[i];
             }
             // delete array of chunks

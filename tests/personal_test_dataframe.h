@@ -396,11 +396,10 @@ void test_filter() {
     }
 
     delete df2;
-    exit(0);
 }
 
 TEST(testDataFrame, testDataFrameFilter) {
-  CS4500_ASSERT_EXIT_ZERO(test_filter);
+  test_filter();
 }
 
 // ********************* Submitted test 2 *******************************
@@ -447,11 +446,10 @@ void test_map() {
     for (int i = 0; i < size; i++) {
         ASSERT_EQ(df.get_int(4, i), df.get_int(0, i) * df.get_float(1, i));
     }
-    exit(0);
 }
 
 TEST(testDataFrame, testDataFrameMap) {
-  CS4500_ASSERT_EXIT_ZERO(test_map);
+  test_map();
 }
 
 

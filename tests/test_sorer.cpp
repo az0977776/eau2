@@ -66,9 +66,9 @@ bool parse_row_wrapper(const char* input, const char** expected) {
 
     bool ret = compare_array_chars(temp, expected, num_fields);
 
-    
-    delete temp;
+    delete[] temp;
     delete reader;
+
     return ret;
 }
 
@@ -188,6 +188,8 @@ void test_read() {
     test(df->get_string(3, 6), "+12444.21123", "Value at column 3 row 6");
     test(df->get_string(4, 0), "hello world", "Value at column 4 row 0");
 
+    delete df;
+
     OK("read test.");
 }
 
@@ -232,6 +234,9 @@ void test_partial_file_read() {
     test(df2->get_float(2, 1), -123.938, 0.001, "Value at column 2 row 1");
     test(df2->get_string(3, 1), "hello", "Value at column 3 row 1");
     test(df2->get_string(4, 0), "hello world", "Value at column 4 row 0");
+
+    delete df;
+    delete df2;
 
     OK("end middle of file read test.");
 }

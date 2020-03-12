@@ -67,7 +67,7 @@ class Schema : public Object {
                 for (size_t i = 0; i < types_len_; i++) {
                     temp[i] = types_[i];
                 }
-                delete types_;
+                delete[] types_;
                 types_ = temp;
             }
         }
