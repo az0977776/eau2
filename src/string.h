@@ -123,4 +123,26 @@ public:
         val_ = nullptr; // val_ was consumed above
         return res;
     }
+
+    StrBuff& set(size_t index, char character) {
+        if (index >= size_) {
+            char buf[2] = {character, '\0'};
+            c(buf);
+        } else {
+            val_[index] = character;
+        }
+        return *this;
+    }
+
+    char get(size_t index) {
+        if (index >= size_) {
+            return '\0';
+        } else {
+            return val_[index];
+        }
+    }
+
+    size_t size() {
+        return size_;
+    }
 };

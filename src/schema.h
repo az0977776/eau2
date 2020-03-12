@@ -5,41 +5,6 @@
 
 #include "object.h"
 #include "string.h"
-#include "column.h"
-
-// StringArray is a subclass of StringColumn
-// holds String pointers that are external
-class StringArray : public StringColumn {
-    public:
-        StringArray() : StringColumn() {}
-
-        // returns the index of the first occurence of the str in the StringArray
-        // returns -1 if not found
-        int indexOf(const char* str) {
-            String* s = new String(str);
-            int ret_val = -1;
-            for (size_t i = 0; i < size(); i++) {
-                size_t big_idx = i / small_cap_;
-                size_t small_idx = i % small_cap_;
-                if (data_[big_idx][small_idx] && data_[big_idx][small_idx]->equals(s)) {
-                    ret_val = i;
-                    break;
-                }
-            }
-            delete s;
-            return ret_val;
-        }
-
-        // clone function that returns a copy of this StringArray
-        StringArray* clone() {
-            StringArray *temp = new StringArray();
-            for (size_t i = 0; i < size(); i++) {
-                temp->push_back(get(i));
-            }
-            return temp;
-        }
-};
-
 
 /*************************************************************************
  * Schema::
@@ -52,30 +17,28 @@ class Schema : public Object {
     public:
         char* types_;
         size_t types_cap_;
+        size_t types_len_;
 
-        // Uses StringArrays to hold the column and row names
-        StringArray *row_names_;
-        StringArray *col_names_;
+        size_t num_rows_;
 
         /** Copying constructor */
         Schema(Schema& from) {
+            num_rows_ = 0;
+            types_len_ = 0;
             types_cap_ = from.types_cap_;
-            row_names_ = from.row_names_->clone();
-            col_names_ = from.col_names_->clone();
-            
             types_ = new char[types_cap_];
-            for (size_t i = 0; i < col_names_->size(); i++) {
-                types_[i] = from.types_[i];
+
+            for (size_t i = 0; i < from.types_len_; i++) {
+                add_column(from.col_type(i));
             }
         }
 
         /** Create an empty schema **/
         Schema() {
             types_cap_ = ARRAY_STARTING_CAP;
+            types_len_ = 0;
+            num_rows_ = 0;
             types_ = new char[types_cap_];
-
-            row_names_ = new StringArray();
-            col_names_ = new StringArray();
         }
 
         /** Create a schema from a string of types. A string that contains
@@ -84,27 +47,24 @@ class Schema : public Object {
         * undefined. **/
         Schema(const char* types) {
             types_cap_ = ARRAY_STARTING_CAP;
+            types_len_ = 0;
+            num_rows_ = 0;
             types_ = new char[types_cap_];
 
-            row_names_ = new StringArray();
-            col_names_ = new StringArray();
-
             for (size_t i = 0; i < strlen(types); i++) {
-                add_column(types[i], nullptr);
+                add_column(types[i]);
             }
         }
 
         ~Schema() {
             delete[] types_;
-            delete row_names_;
-            delete col_names_;
         }
 
         void check_and_reallocate_() {
-            if (width() >= types_cap_) {
+            if (types_len_ >= types_cap_) {
                 types_cap_ *= 2;
                 char* temp = new char[types_cap_];
-                for (size_t i = 0; i < width(); i++) {
+                for (size_t i = 0; i < types_len_; i++) {
                     temp[i] = types_[i];
                 }
                 delete types_;
@@ -112,31 +72,16 @@ class Schema : public Object {
             }
         }
 
+        void add_row() {
+            num_rows_++;
+        }
+
         /** Add a column of the given type and name (can be nullptr), name
         * is external. Names are expectd to be unique, duplicates result
         * in undefined behavior. */
-        void add_column(char typ, String* name) {
+        void add_column(char typ) {
             check_and_reallocate_();
-            types_[width()] = typ;
-            col_names_->push_back(name);
-        }
-
-        /** Add a row with a name (possibly nullptr), name is external.  Names are
-         *  expectd to be unique, duplicates result in undefined behavior. */
-        void add_row(String* name) {
-            row_names_->push_back(name);
-        }
-
-        /** Return name of row at idx; nullptr indicates no name. An idx >= length
-        * is undefined. */
-        String* row_name(size_t idx) {
-            return row_names_->get(idx);
-        }
-
-        /** Return name of column at idx; nullptr indicates no name given.
-        *  An idx >= width is undefined.*/
-        String* col_name(size_t idx) {
-            return col_names_->get(idx);
+            types_[types_len_++] = typ;
         }
 
         /** Return type of column at idx. An idx >= width is undefined. */
@@ -145,30 +90,13 @@ class Schema : public Object {
             return types_[idx];
         }
 
-        /** Given a column name return its index, or -1. */
-        int col_idx(const char* name) {
-            if (name == nullptr) {
-                return -1;
-            }
-            return col_names_->indexOf(name);
-        }
-
-        /** Given a row name return its index, or -1. */
-        int row_idx(const char* name) {
-            if (name == nullptr) {
-                return -1;
-            }
-            return row_names_->indexOf(name);
-        }
-
         /** The number of columns */
         size_t width() {
-            return col_names_->size();
+            return types_len_;
         }
 
-        /** The number of rows */
         size_t length() {
-            return row_names_->size();
+            return num_rows_;
         }
 
         /**
@@ -179,7 +107,7 @@ class Schema : public Object {
         bool equals(Object* o) {
             Schema* other = dynamic_cast<Schema*>(o);
 
-            if (other == nullptr || other->width() != width() || other->length() != length()) {
+            if (other == nullptr || other->width() != width()) {
                 return false;
             }
             
@@ -189,28 +117,6 @@ class Schema : public Object {
                     return false;
                 }
             }
-            
-            // check column names
-            for (size_t i = 0; i < width(); i++) {
-                if (col_name(i) == nullptr && other->col_name(i) == nullptr) {
-                    continue;
-                } else if (col_name(i) == nullptr || other->col_name(i) == nullptr) {
-                    return false;
-                } else if (!col_name(i)->equals(other->col_name(i))) {
-                    return false;
-                }
-            }  
-            
-            // check row names
-            for (size_t i = 0; i < length(); i++) {
-                if (row_name(i) == nullptr && other->row_name(i) == nullptr) {
-                    continue;
-                } else if (row_name(i) == nullptr || other->row_name(i) == nullptr) {
-                    return false;
-                } else if (!row_name(i)->equals(other->row_name(i))) {
-                    return false;
-                }
-            }   
             
             return true;
         }

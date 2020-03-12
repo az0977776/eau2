@@ -6,100 +6,64 @@
 
 #include "object.h"
 #include "column.h"
-#include "helpers.h"
+#include "helper.h"
+#include "schema.h"
+#include "dataframe.h"
 
 // The maximum length of a line buffer. No lines over 4095 bytes
-static const int buff_len = 4096; 
+static const int buff_len = 4096 * 16; 
+static const int infer_line_count = 500;
 
 // Reads a file and determines the schema on read
 class SOR : public Object {
     public:
-        Column** cols_;  // owned
-        size_t len_;
-        size_t cap_;
+        FILE* file_;
 
-        SOR() { 
-            len_ = 0;
-            cap_ = 16;
-            cols_ = new Column*[cap_];
-
-            for (size_t i = 0; i < cap_; i++) {
-                cols_[i] = nullptr;
-            }
+        SOR(const char* filename) { 
+            file_ = fopen(filename, "r");
+            abort_if_not(file_ != NULL, "File is null pointer");
         }
 
         ~SOR() {
-            for (size_t i = 0; i < len_; i++) {
-                if (cols_[i] != nullptr) {
-                    delete cols_[i];
-                }
-            }
-            delete[] cols_;
-        }
-
-        // What is the type of the column at the given index? i
-        // if the index is too big a -1 is returned
-        ColumnType get_col_type(size_t index) {
-            if (index >= len_) {
-                return type_unknown;
-            }
-            return cols_[index]->get_type();
+            fclose(file_);
         }
         
-        // What is the value for the given column index and row index?
-        // If the coluumn or row index are too large a nullptr is returned
-        char* get_value(size_t col_index, size_t row_index) {
-            if (col_index >= len_) {
-                return nullptr;
-            }
-            return cols_[col_index]->get_char(row_index);
-        }
-        
-        // Is there a value at the given column and row index. 
-        // If the indexes are too large, true is returned. 
-        bool is_missing(size_t col_index, size_t row_index) {
-            return get_value(col_index, row_index) == nullptr;
-        }
-
         // Reads in the data from the file starting at the from byte 
         // and reading at most len bytes
-        void read(FILE* f, size_t from, size_t len) {
-            infer_columns_(f, from, len);
-            parse_(f, from, len);
-        }
-
-        // reallocates columns array if more space is needed.
-        void check_reallocate_() {
-            if (len_ >= cap_) {
-                cap_*=2;
-                Column **temp = new Column*[cap_];
-                for (size_t i = 0; i < len_; i++) {
-                    temp[i] = cols_[i];
-                }
-                delete[] cols_;
-                cols_ = temp;
-            }
+        DataFrame* read(size_t from, size_t len) {
+            Schema* schema = infer_columns_(from, len);
+            DataFrame* df = new DataFrame(*schema);
+            parse_(df, from, len);
+            delete schema;
+            return df;
         }
 
         // moves the file pointer to the start of the next line.
-        void seek_(FILE* f, size_t from) {
+        void seek_(size_t from) {
             if (from == 0) {
-                fseek(f, from, SEEK_SET);
+                fseek(file_, from, SEEK_SET);
             } else {
                 char buf[buff_len];
-                fseek(f, from - 1, SEEK_SET);
-                fgets(buf, buff_len, f);
+                fseek(file_, from - 1, SEEK_SET);
+                fgets(buf, buff_len, file_);
             }
         }
 
+        bool should_redefine_type_(char current_type, char inferred_type) {
+            return column_type_to_num(current_type) < column_type_to_num(inferred_type);
+        }
+
         // infers and creates the column objects
-        void infer_columns_(FILE* f, size_t from, size_t len) {
-            seek_(f, from);
+        Schema* infer_columns_(size_t from, size_t len) {
+            seek_(from);
             char buf[buff_len];
 
             size_t total_bytes = 0;
             size_t row_count = 0;
-            while (fgets(buf, buff_len, f) != nullptr && row_count < 500) {
+
+            StrBuff col_types;
+
+            while (fgets(buf, buff_len, file_) != nullptr && row_count < infer_line_count) {
                 row_count++;
                 total_bytes += strlen(buf);
                 if (total_bytes >= len) {
@@ -109,33 +73,20 @@ class SOR : public Object {
                 char** row = parse_row_(buf, &num_fields);
 
                 for (size_t i = 0; i < num_fields; i++) {
-                    check_reallocate_();
-                    if (i >= len_) {
-                        cols_[i] = new ColumnBool();
-                        len_++;
-                    }
-                    ColumnType inferred_type = infer_type(row[i]);
-                    if (inferred_type > cols_[i]->get_type()) {
-                        delete cols_[i];
-                        switch(inferred_type) {
-                            case type_bool:
-                                cols_[i] = new ColumnBool();
-                                break;
-                            case type_int:
-                                cols_[i] = new ColumnInt();
-                                break;                            
-                            case type_float:
-                                cols_[i] = new ColumnFloat();
-                                break;                               
-                            default:
-                                cols_[i] = new ColumnString();
-                                break;
-                        }
+
+                    char inferred_type = infer_type(row[i]);
+                    if (should_redefine_type_(col_types.get(i), inferred_type)) {
+                        col_types.set(i, inferred_type);
                     }
                 }
                 delete[] row;
 
             }
+
+            String* schema_string = col_types.get();
+            Schema* ret_val = new Schema(schema_string->c_str());
+            delete schema_string;
+            return ret_val;
         }
 
         // Find the start of the field value and null terminate it.
@@ -204,12 +155,15 @@ class SOR : public Object {
 
 
         // read the rows from the starting byte up to len bytes into Columns.
-        void parse_(FILE* f, size_t from, size_t len) {
-            seek_(f, from);
+        void parse_(DataFrame* df, size_t from, size_t len) {
+            seek_(from);
+            String empty_string("");
             char buf[buff_len];
+            Schema schema = df->get_schema();
+            Row df_row(schema);
 
             size_t total_bytes = 0;
-            while (fgets(buf, buff_len, f) != nullptr) {
+            while (fgets(buf, buff_len, file_) != nullptr) {
                 total_bytes += strlen(buf);
                 if (total_bytes >= len) {
                     break;
@@ -226,8 +180,8 @@ class SOR : public Object {
 
                 // we skip the row as soon as we find a field that does not match our schema
                 bool skip = false;
-                for (size_t i = 0; i < len_; i++) {
-                    if (!cols_[i]->can_add(row[i])) {
+                for (size_t i = 0; i < df->ncols(); i++) {
+                    if (i < num_fields && row[i] != nullptr && should_redefine_type_(schema.col_type(i), infer_type(row[i]))) {
                         skip = true;
                         break;
                     }
@@ -236,17 +190,60 @@ class SOR : public Object {
                     delete[] row;
                     continue;
                 }
-                
+
                 // add all fields in this row to columns
-                for (size_t i = 0; i < len_; i++) {
+                for (size_t i = 0; i < df->ncols(); i++) {
                     if (i >= num_fields || row[i] == nullptr) {
-                        cols_[i]->add_nullptr();
+                        switch(schema.col_type(i)) {
+                            case BOOL:
+                                df_row.set(i, false);
+                                break;
+                            case INT:
+                                df_row.set(i, 0);
+                                break;
+                            case FLOAT:
+                                df_row.set(i, (float) 0.0);
+                                break;
+                            case STRING:
+                                df_row.set(i, &empty_string);
+                                break;
+                            default:
+                                abort_if_not(false, "SOR.parse(): empty value into unknown col type");    
+                        }
                     } else {
-                        cols_[i]->add(row[i]);
+                        switch(schema.col_type(i)) {
+                            case BOOL:
+                            {
+                                df_row.set(i, as_bool(row[i]));
+                                break;
+                            }
+                            case INT:
+                            {
+                                df_row.set(i, as_int(row[i]));
+                                break;
+                            }
+                            case FLOAT:
+                            {
+                                df_row.set(i, as_float(row[i]));
+                                break;
+                            }
+                            case STRING:
+                            {
+                                String* tmp = as_string(row[i]);
+                                df_row.set(i, tmp);
+                                delete tmp;
+                                break;
+                            }
+                            default:
+                            {
+                                abort_if_not(false, "SOR.parse(): put value into unknown col type"); 
+                            }   
+                        }
                     }
                 }
-                delete[] row;
 
+                df->add_row(df_row);
+                delete[] row;
             }
         }
 };

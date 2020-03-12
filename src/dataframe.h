@@ -163,7 +163,7 @@ class DataFrameOriginal : public Object {
         /** Create a data frame with the same columns as the given df but with no rows or rownames */
         DataFrameOriginal(DataFrameOriginal& df) : schema_() {
             for (size_t i = 0; i < df.ncols(); i++) {
-                schema_.add_column(df.schema_.col_type(i), df.schema_.col_name(i));
+                schema_.add_column(df.schema_.col_type(i));
             }
             
             cols_cap_ = schema_.width() < 4 ? 4: schema_.width();
@@ -234,13 +234,13 @@ class DataFrameOriginal : public Object {
         /** Adds a column this DataFrameOriginal, updates the schema, the new column
         * is external, and appears as the last column of the DataFrameOriginal, the
         * name is optional and external. A nullptr colum is undefined. */
-        void add_column(Column* col, String* name) {
+        void add_column(Column* col) {
             abort_if_not(col != nullptr, "DataFrameOriginal.add_column(): col is nullptr");
             abort_if_not(cols_len_ == 0 || col->size() == nrows(), "DataFrameOriginal.add_column(): DataFrameOriginal is not rectangular");
-            schema_.add_column(col->get_type(), name);
+            schema_.add_column(col->get_type());
             for (size_t i = nrows(); cols_len_ == 0 && i < col->size(); i++) {
                 // only add rows if it is the first column to be added
-                schema_.add_row(nullptr); // make sure schema has the same shape as DataFrameOriginal
+                schema_.add_row(); // make sure schema has the same shape as DataFrameOriginal
             }
             check_and_reallocate_();
             cols_[cols_len_] = col;
@@ -267,16 +267,6 @@ class DataFrameOriginal : public Object {
         String* get_string(size_t col, size_t row) {
             abort_if_not(col < cols_len_, "DataFrameOriginal.get_string(): column index out of bounds");
             return cols_[col]->as_string()->get(row);
-        }
-
-        /** Return the offset of the given column name or -1 if no such col. */
-        int get_col(String& col) {
-            return schema_.col_idx(col.c_str());
-        }
-
-        /** Return the offset of the given row name or -1 if no such row. */
-        int get_row(String& col) {
-            return schema_.row_idx(col.c_str());
         }
 
         /** Set the value at the given column and row to the given value.
@@ -335,7 +325,7 @@ class DataFrameOriginal : public Object {
             DataFrameAddFielder f(cols_len_, cols_); 
             row.visit(schema_.length(), f); // add data to columns
             if (cols_len_ > 0 && cols_[0]->size() > schema_.length()) {
-                schema_.add_row(nullptr); // nameless row
+                schema_.add_row(); // nameless row
             }
         }
 

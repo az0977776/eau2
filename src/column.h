@@ -10,45 +10,106 @@
 static const size_t ARRAY_STARTING_CAP = 4;
 
 enum ColumnType {
-    INT = 'I', 
+    UNKNOWN = 0,
     BOOL = 'B', 
+    INT = 'I', 
     FLOAT = 'F',
     STRING = 'S'
 };
 
-/**
- * 
- enum ColumnType {
-    type_unknown = -1,
-    type_bool = 0,
-    type_int = 1,
-    type_float = 2,
-    type_string = 3,
-};
+size_t column_type_to_num(char t) {
+    switch (t) {
+        case UNKNOWN:
+            return 0;
+        case BOOL:
+            return 1;
+        case INT:
+            return 2;
+        case FLOAT:
+            return 3;
+        case STRING:
+            return 4;
+        default:
+            abort();
+    }
+}
+
+bool is_int(char *c) {
+    if (*c == '\0') {
+        return false;
+    }
+    for (int i = 0; c[i] != '\0'; i++) {
+        if (i == 0 && (c[i] == '+' || c[i] == '-')) {
+            continue;
+        } else if (!isdigit(c[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool is_float(char *c) {
+    if (*c == '\0') {
+        return false;
+    }
+    bool has_decimal = false;
+    for (int i = 0; c[i] != '\0'; i++) {
+        if (i == 0 && (c[i] == '+' || c[i] == '-')) {
+            continue;
+        } else if (c[i] == '.' && has_decimal) {
+            return false;
+        } else if (c[i] == '.') {
+            has_decimal = true;
+        } else if (!isdigit(c[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool as_bool(char* c) {
+    if (*c == '1') {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+int as_int(char* c) {
+    return atoi(c);
+}
+
+float as_float(char* c) {
+    return atof(c);
+}
+
+String* as_string(char* c) {
+    return new String(c);
+}
+
 
 // returns the inferred typing of the char*
-ColumnType infer_type(char *c) {
+char infer_type(char *c) {
     // missing values
     if (c == nullptr) {
-        return type_bool;
+        return BOOL;
     }
     // check boolean
     if (strlen(c) == 1) {
         if ((*c == '0') || (*c == '1')) {
-            return type_bool;
+            return BOOL;
         }
     }
     // check int
     if (is_int(c)) {
-        return type_int;
+        return INT;
     }
     // check float
     if (is_float(c)) {
-        return type_float;
+        return FLOAT;
     }
-    return type_string;
+    return STRING;
 }
- */
 
 class StringColumn;
 class FloatColumn;
@@ -401,7 +462,7 @@ class FloatColumn : public Column {
 
 /*************************************************************************
  * StringColumn::
- * Holds string pointers. The strings are external.  Nullptr is a valid
+ * Holds string pointers. The strings are owned and copied.  Nullptr is a valid
  * value.
  */
 class StringColumn : public Column {
@@ -421,15 +482,21 @@ class StringColumn : public Column {
             va_start (arguments, n);
 
             for (int i = 0; i < n; i++ ) {
-                push_back(va_arg(arguments, String*));
+                push_back(new String(*va_arg(arguments, String*)));
             }
             va_end(arguments);
         }
 
         ~StringColumn() {
+            // delete all strings
+            for (size_t i = 0; i < size(); i++) {
+                delete get(i);
+            }
+            // delete chunks
             for (size_t i = 0; i < big_len_; i++) {
                 delete[] data_[i];
             }
+            // delete array of chunks
             delete[] data_;
         }
 
@@ -469,8 +536,7 @@ class StringColumn : public Column {
                 
         virtual void push_back(String* val) {
             check_and_reallocate_();
-            data_[big_len_][small_len_] = val;
-            small_len_++;
+            data_[big_len_][small_len_++] = new String(*val);
         }
 
         /** Out of bound idx is undefined. */
@@ -478,7 +544,10 @@ class StringColumn : public Column {
             size_t big_idx = idx / small_cap_;
             size_t small_idx = idx % small_cap_;
             abort_if_not(idx < size(), "StringColumn.get(): index out of bounds");
-            data_[big_idx][small_idx] = val;
+            if (data_[big_idx][small_idx] != nullptr) {
+                delete data_[big_idx][small_idx];
+            }
+            data_[big_idx][small_idx] = new String(*val);
         }
 
         char get_type_() {

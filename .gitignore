@@ -4,3 +4,4 @@ tests/googletest-download/*
 tests/cmake_install.cmake
 tests/CMakeCache.txt
 tests/Makefile
+tests/sorer_test.dSYM/Contents/Info.plist
