@@ -482,7 +482,7 @@ class StringColumn : public Column {
             va_start (arguments, n);
 
             for (int i = 0; i < n; i++ ) {
-                push_back(new String(*va_arg(arguments, String*)));
+                push_back(va_arg(arguments, String*));
             }
             va_end(arguments);
         }
@@ -536,7 +536,11 @@ class StringColumn : public Column {
                 
         virtual void push_back(String* val) {
             check_and_reallocate_();
-            data_[big_len_][small_len_++] = new String(*val);
+            if (val == nullptr) {
+                data_[big_len_][small_len_++] = nullptr;
+            } else {
+                data_[big_len_][small_len_++] = new String(*val);
+            }
         }
 
         /** Out of bound idx is undefined. */
@@ -547,7 +551,11 @@ class StringColumn : public Column {
             if (data_[big_idx][small_idx] != nullptr) {
                 delete data_[big_idx][small_idx];
             }
-            data_[big_idx][small_idx] = new String(*val);
+            if (val == nullptr) {
+                data_[big_idx][small_idx] = nullptr;
+            } else {
+                data_[big_idx][small_idx] = new String(*val);
+            }
         }
 
         char get_type_() {

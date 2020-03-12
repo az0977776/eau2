@@ -2,8 +2,8 @@
 
 #include <gtest/gtest.h>
 
-#include "string.h"  
-#include "column.h"
+#include "../src/string.h"  
+#include "../src/column.h"
 
 #include "personal_test_macros.h"
 

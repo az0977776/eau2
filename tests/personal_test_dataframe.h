@@ -2,11 +2,11 @@
 
 #include <gtest/gtest.h>
 
-#include "string.h"  
-#include "dataframe.h"
-#include "schema.h"
-#include "column.h"
-#include "row.h"
+#include "../src/string.h"  
+#include "../src/dataframe.h"
+#include "../src/schema.h"
+#include "../src/column.h"
+#include "../src/row.h"
 
 #include "personal_test_macros.h"
 
@@ -67,7 +67,7 @@ void test_dataframe_constructor_by_schema() {
     EXPECT_EQ(df1.get_schema().col_type(4), 'B');
 
     // check that row's schema does not change
-    schema1.add_column('S', nullptr);
+    schema1.add_column('S');
     ASSERT_EQ(df1.ncols(), 5);
 
     EXPECT_NE(df1.get_schema().col_type(5), 'S'); // This will exit with code -1
@@ -125,13 +125,13 @@ void test_dataframe_get_schema() {
     Schema schema("IBFS");
     String col_name("column name");
 
-    schema.add_column('I', &col_name);
+    schema.add_column('I');
 
     DataFrame df(schema);
 
     EXPECT_TRUE(df.get_schema().equals(&schema));
 
-    schema.add_column('B', nullptr);
+    schema.add_column('B');
 
     EXPECT_FALSE(df.get_schema().equals(&schema)); // do not mutate the values
 }
@@ -156,9 +156,9 @@ void test_dataframe_add_column() {
     String bc_name("bool column");
     String ic2_name("second int");
 
-    df.add_column(&ic1, &ic1_name);
-    df.add_column(&bc, &bc_name);
-    df.add_column(&ic2, &ic2_name);
+    df.add_column(&ic1);
+    df.add_column(&bc);
+    df.add_column(&ic2);
 
     // Dataframe has rows and columns
     ASSERT_EQ(df.ncols(), 3);
@@ -172,11 +172,6 @@ void test_dataframe_add_column() {
     EXPECT_EQ(df.get_schema().col_type(0), 'I');
     EXPECT_EQ(df.get_schema().col_type(1), 'B');
     EXPECT_EQ(df.get_schema().col_type(2), 'I');
-
-    // added column names
-    EXPECT_EQ(df.get_col(ic1_name), 0);
-    EXPECT_EQ(df.get_col(bc_name), 1);
-    EXPECT_EQ(df.get_col(ic2_name), 2);
 
     // added values
     EXPECT_EQ(df.get_int(0, 4), 2000);
@@ -293,9 +288,9 @@ void test_dataframe_get_col() {
     String ic2_name("second int");
     String does_not_exist("does not exist");
 
-    df.add_column(&ic1, &ic1_name);
-    df.add_column(&bc, &bc_name);
-    df.add_column(&ic2, &ic2_name);
+    df.add_column(&ic1);
+    df.add_column(&bc);
+    df.add_column(&ic2);
 
     // Dataframe has rows and columns
     ASSERT_EQ(df.ncols(), 3);
@@ -309,11 +304,6 @@ void test_dataframe_get_col() {
     ASSERT_EQ(df.get_schema().col_type(0), 'I');
     ASSERT_EQ(df.get_schema().col_type(1), 'B');
     ASSERT_EQ(df.get_schema().col_type(2), 'I');
-
-    EXPECT_EQ(df.get_col(ic1_name), 0);
-    EXPECT_EQ(df.get_col(bc_name), 1);
-    EXPECT_EQ(df.get_col(ic2_name), 2);
-    EXPECT_EQ(df.get_col(does_not_exist), -1);
 }
 
 TEST(testDataFrame, testDataFrameGetCol) {
@@ -376,7 +366,7 @@ void test_filter() {
     // creates a schema and adds a column with a name
     Schema s("IBFS");
     String stri("cow");
-    s.add_column('I', &stri);
+    s.add_column('I');
 
     DataFrame df(s);
     Row r(df.get_schema());
@@ -399,8 +389,7 @@ void test_filter() {
     
     // every other row should have been deleted
     ASSERT_EQ(df2->nrows(), size / 2);
-    // the column name is preserved in the new DataFrame
-    ASSERT_EQ(df2->get_schema().col_name(4), &stri);
+    
     // every row in the new DataFrame should be even
     for (int i = 0; i < df2->nrows(); i++) {
       EXPECT_EQ(df2->get_int(0, i) % 2, 0);
@@ -469,76 +458,6 @@ TEST(testDataFrame, testDataFrameMap) {
 // ********************* Submitted test 3 *******************************
 // uses FilterOddRower from above
 
-void test_names() {
-    // creates a schema and assigns names to all columns and rows
-    Schema s;
-    String str0("apple");
-    String str1("boat");
-    String str2("cat");
-    String str3("dog");
-    String str4("egg");
-    String str5("frog");
-    String str6("goat");
-    
-    // Naming the rows in the Schema
-    s.add_row(&str0);
-    s.add_row(&str1);
-    s.add_row(&str2);
-    s.add_row(&str3);
-
-    // Create DataFrame and Row using the Schema
-    DataFrame df(s);
-    Row r(df.get_schema());
-
-    // populate the DataFrame
-    IntColumn ic(4, 0, 1, 2, 3);
-    BoolColumn bc1(4, true, true, true, true);
-    BoolColumn bc2(4, false, false, false, false);
-    // Add the Columns with names
-    df.add_column(&ic, &str4);
-    df.add_column(&bc1, &str5);
-    df.add_column(&bc2, &str6);
-
-    // check if the column names are correct
-    ASSERT_EQ(df.get_col(str4), 0);
-    ASSERT_EQ(df.get_col(str5), 1);
-    ASSERT_EQ(df.get_col(str6), 2);
-
-    // check if the row names are correct
-    ASSERT_EQ(df.get_row(str0), 0);
-    ASSERT_EQ(df.get_row(str1), 1);
-    ASSERT_EQ(df.get_row(str2), 2);
-    ASSERT_EQ(df.get_row(str3), 3);
-
-    // check the DataFrame dimensions
-    ASSERT_EQ(df.ncols(), 3);
-    ASSERT_EQ(df.nrows(), 4);
-
-    // Filter that filters out columns with first fields that are odd
-    FilterOddRower f;
-    // uses the Rower in the DataFrame filter function
-    DataFrame *df2 = df.filter(f);
-    
-    // every other row should have been deleted
-    ASSERT_EQ(df2->nrows(), 2);
-    // every row in the new DataFrame should be even
-    for (int i = 0; i < df2->nrows(); i++) {
-      EXPECT_EQ(df2->get_int(0, i) % 2, 0);
-    }
-
-    /// checks that the returned DataFrame has the column names
-    ASSERT_EQ(df2->get_col(str4), 0);
-    ASSERT_EQ(df2->get_col(str5), 1);
-    ASSERT_EQ(df2->get_col(str6), 2); 
-
-    delete df2;
-    exit(0);
-}
-
-TEST(testDataFrame, testDataFrameNames) {
-  CS4500_ASSERT_EXIT_ZERO(test_names);
-}
-
 /**
  * DataFrame prints in the expected format.
  * NOTE: the captures all stdout durring the test.
@@ -596,17 +515,15 @@ void test_dataframe_equals() {
     IntColumn ic1(5, 123, 456, 789, 1000, 2000);
     BoolColumn bc(5, true, true, false, true, false);
     IntColumn ic2(5, 5000, 3000, 1000, 59, -1);
-    String ic1_name("first int");
-    String bc_name("bool column");
-    String ic2_name("second int");
-    df1.add_column(&ic1, &ic1_name);
-    df1.add_column(&bc, &bc_name);
-    df1.add_column(&ic2, &ic2_name);
+    
+    df1.add_column(&ic1);
+    df1.add_column(&bc);
+    df1.add_column(&ic2);
 
     DataFrame df2(schema);
-    df2.add_column(&ic1, &ic1_name);
-    df2.add_column(&bc, &bc_name);
-    df2.add_column(&ic2, &ic2_name);
+    df2.add_column(&ic1);
+    df2.add_column(&bc);
+    df2.add_column(&ic2);
 
     EXPECT_TRUE(df->equals(df));
     EXPECT_TRUE(df1.equals(&df2));  // columns have pointer equality

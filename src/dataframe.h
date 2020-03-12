@@ -353,22 +353,6 @@ class DataFrameOriginal : public Object {
             map_rows_(0, nrows(), r);
         }
 
-        /** Create a new dataframe, constructed from rows for which the given Rower
-        * returned true from its accept method. 
-        * The returned DataFrame will lose its row names.
-        * */
-        DataFrameOriginal* filter(Rower& r) {
-            DataFrameOriginal* df = new DataFrameOriginal(*this);
-            Row row(schema_);
-            for (size_t i = 0; i < nrows(); i++) {
-                fill_row(i, row);
-                if (r.accept(row)) {
-                    df->add_row(row);
-                }
-            }
-            return df;
-        }
-
         /** Print the dataframe in SoR format to standard output. */
         void print() {
             PrintDataFrameRower rower;
@@ -424,6 +408,22 @@ class DataFrame: public DataFrameOriginal{
         * empty. */
         DataFrame(Schema& schema) : DataFrameOriginal(schema) {
 
+        }
+
+        /** Create a new dataframe, constructed from rows for which the given Rower
+        * returned true from its accept method. 
+        * The returned DataFrame will lose its row names.
+        * */
+        DataFrame* filter(Rower& r) {
+            DataFrame* df = new DataFrame(*this);
+            Row row(schema_);
+            for (size_t i = 0; i < nrows(); i++) {
+                fill_row(i, row);
+                if (r.accept(row)) {
+                    df->add_row(row);
+                }
+            }
+            return df;
         }
 
         /** This method clones the Rower and executes the map in parallel. Join is

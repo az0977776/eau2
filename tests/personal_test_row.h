@@ -2,9 +2,9 @@
 
 #include <gtest/gtest.h>
 
-#include "string.h"  
-#include "row.h"
-#include "schema.h"
+#include "../src/string.h"  
+#include "../src/row.h"
+#include "../src/schema.h"
 
 #include "personal_test_macros.h"
 
@@ -28,7 +28,7 @@ void test_row_constructor() {
     EXPECT_EQ(row.col_type(4), 'B');
 
     // check that row's schema does not change
-    schema.add_column('S', nullptr);
+    schema.add_column('S');
     ASSERT_NE(row.width(), schema.width());
     ASSERT_EQ(row.width(), schema.width() - 1);
     
