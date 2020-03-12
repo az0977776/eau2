@@ -5,16 +5,26 @@ The eua2 system is a system that allows users to run applications involving data
 
 # Architecture
 
-## Server and Client startup/setup
-To setup the system, the registration server must first be started. Clients will start after and connect to the server. The server keeps track of all registered clients and broadcasts all registered clients to each of the registered clients. This allows the clients to discover all other clients in the system.
+## Network and Key-Value Store Layer
 
-## Key-Value Store system
-Each Key-Value Store holds a client that it uses to communicate with other Key-Value Stores. When a key value store gets a `get` command, it uses the node index from the key object to determine which of it client peers or itself contains the value for the key. It gets the serialized value from the other node or from local memory and returns it.
+This layer is a distributed KV store running on multiple node. Each KV store node has part of the data, and the KV store nodes talk to exchange data when needed. All of the networking and concurrency control is hidden here.
 
-## Distributed DataFrame and Column
+### Server and Client startup/setup
+To setup the system, the registration server must first be started. Clients (KV Store nodes) will start after and connect to the server. The server keeps track of all registered clients and broadcasts all registered clients to each of the registered clients. This allows the clients to discover all other clients in the system.
+
+## Distributed DataFrame and Array Layer
+
+This layer provides abstractions like the distributed dataframe and arrays. 
+
+### Distributed DataFrame and Column
 A DataFrame represents multiple columns of data that each hold a specific type (`String`, `float`, `int`, `bool`). A column holds chunks that each hold actual values. A dataframe object does not actually hold the values directly; there are two layers of indirection needed when accessing a value inside a dataframe. 
 
 A dataframe holds keys to its columns and a column holds keys to its chunks. When accessing a value inside a dataframe, there will be two key-value store lookups. The first lookup is getting the column from the key-value store using the column key and the second lookup is getting the chunk from the key-value store using the chunk key. Then there is a final access to get the value in the chunk.
+
+## Application Layer
+
+The user can operate on the dataframes. (Queries, Machine Learning, AI)
+
 
 # Implementation
 
@@ -108,6 +118,8 @@ public:
 };
 ```
 
+Use case of reading a SoR file into a dataFrame and parallel mapping a function over the dataFrame.
+
 ```cpp
 SOR sorer("../data/data.sor");
 
@@ -119,14 +131,13 @@ Fibonacci fib(df);
 df->map(fib);
 
 delete df;
-
-printf("OK: test_map\n");
 ```
 
 
 # Open questions
 - What is the process for distributing the objects across multiple nodes? Whos responsibility is it to distribute chunks into different nodes?
-- When accessing multiple values in the same chunk, the current strategy will require multiple iterations of deserializing the chunk and getting a single value when it is possible to deserialize the chunk once and cache the value. Is the implementation of a comprehensive caching stratgey/system part of the spec?
+- When accessing multiple values in the same chunk, the current strategy will require multiple iterations of deserializing the chunk and getting a single value when it is possible to deserialize the chunk once and cache the value. Is the implementation of a comprehensive caching stratgey/system required?
+- Why is the key value store exposed to the application level? Should the user be allowed to pick which node to create a distributed DataFrame on (sample use case)?
 
 # Status
 What the team has:
