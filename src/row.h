@@ -7,6 +7,7 @@
 #include "string.h"
 #include "schema.h"
 #include "helper.h"
+#include "column.h"
 
 /*****************************************************************************
  * Fielder::

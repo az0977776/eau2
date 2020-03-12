@@ -38,6 +38,11 @@ class SOR : public Object {
             return df;
         }
 
+        DataFrame* read() {
+            // -1 is the max size_t value
+            return read(0, -1);
+        }
+
         // moves the file pointer to the start of the next line.
         void seek_(size_t from) {
             if (from == 0) {

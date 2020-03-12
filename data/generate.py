@@ -1,6 +1,6 @@
 from random import randint, random
 
-rows = 1000 * 250
+rows = 250
 num_spaces = 1
 integer_range = 1000000
 strings = ['Hello', 'world', 'foo', 'bar', 'baz', '"Hello World"', '1.333', '1', '1111', '"123 String"', '', '', '""', '"Really long string to add to the line to parse"']
@@ -10,8 +10,6 @@ def get_start():
 
 def get_end():
     return " " * randint(0, num_spaces) + ">" + " " * randint(0, num_spaces)
-
-
 
 
 def get_boolean():
@@ -39,7 +37,8 @@ def get_string():
 
 def print_strings():
     for _ in range(rows):
-        print(get_boolean() + get_int() + get_float() + get_string() + get_boolean())
+        print(get_boolean() + get_int() + get_float() + get_string() + get_boolean() + get_int() + get_float() + get_string() + get_boolean() + get_int())
+
 
 print_strings()
 

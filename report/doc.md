@@ -108,6 +108,22 @@ public:
 };
 ```
 
+```cpp
+SOR sorer("../data/data.sor");
+
+DataFrame* df = sorer.read();
+
+// Fibonacci is a subclass of Rower
+Fibonacci fib(df);
+
+df->map(fib);
+
+delete df;
+
+printf("OK: test_map\n");
+```
+
+
 # Open questions
 - What is the process for distributing the objects across multiple nodes? Whos responsibility is it to distribute chunks into different nodes?
 - When accessing multiple values in the same chunk, the current strategy will require multiple iterations of deserializing the chunk and getting a single value when it is possible to deserialize the chunk once and cache the value. Is the implementation of a comprehensive caching stratgey/system part of the spec?
