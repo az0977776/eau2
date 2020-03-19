@@ -23,7 +23,7 @@ class Fielder : public Object {
         
         /** Called for fields of the argument's type with the value of the field. */
         virtual void accept(bool b) {}
-        virtual void accept(float f) {}
+        virtual void accept(double d) {}
         virtual void accept(int i) {}
         virtual void accept(String* s) {}
         
@@ -59,8 +59,8 @@ class Row : public Object {
                     case INT:
                         data_[i] = new IntColumn();
                         break;
-                    case FLOAT:
-                        data_[i] = new FloatColumn();
+                    case DOUBLE:
+                        data_[i] = new DoubleColumn();
                         break;
                     case STRING:
                         data_[i] = new StringColumn();
@@ -94,9 +94,9 @@ class Row : public Object {
             }
         }
 
-        void set(size_t col, float val) {
-            abort_if_not(col < width(), "Row.set(float) out of bounds");
-            FloatColumn* fc = data_[col]->as_float();
+        void set(size_t col, double val) {
+            abort_if_not(col < width(), "Row.set(double) out of bounds");
+            DoubleColumn* fc = data_[col]->as_double();
             if (fc->size() == 0) {
                 fc->push_back(val);
             } else {
@@ -150,9 +150,9 @@ class Row : public Object {
             BoolColumn *temp = data_[col]->as_bool();
             return temp->get(0);
         }
-        float get_float(size_t col) {
-            abort_if_not(col < width(), "Row.get_float(): out of bounds");
-            FloatColumn *temp = data_[col]->as_float();
+        double get_double(size_t col) {
+            abort_if_not(col < width(), "Row.get_double(): out of bounds");
+            DoubleColumn *temp = data_[col]->as_double();
             return temp->get(0);
         }
         String* get_string(size_t col) {
@@ -184,8 +184,8 @@ class Row : public Object {
                     case INT:
                         f.accept(data_[i]->as_int()->get(0));
                         break;
-                    case FLOAT:
-                        f.accept(data_[i]->as_float()->get(0));
+                    case DOUBLE:
+                        f.accept(data_[i]->as_double()->get(0));
                         break;
                     case STRING:
                         f.accept(data_[i]->as_string()->get(0));

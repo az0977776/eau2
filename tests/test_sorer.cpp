@@ -36,6 +36,14 @@ void test(float actual, float expected, float range, const char* name) {
     }
 }
 
+void test(double actual, double expected, double range, const char* name) {
+    if (actual > expected) {
+        test(actual - expected < range, name);
+    } else {
+        test(expected - actual < range, name);
+    }
+}
+
 void test(String* actual, const char* expected, const char* name) {
     test(strcmp(actual->c_str(), expected) == 0, name);
 }
@@ -141,7 +149,7 @@ void test_infer_columns_() {
     test(schema->width() == 5, "Number of columns");
     test(schema->col_type(0) == BOOL, "type of column 0");
     test(schema->col_type(1) == INT, "type of column 1");
-    test(schema->col_type(2) == FLOAT, "type of column 2");
+    test(schema->col_type(2) == DOUBLE, "type of column 2");
     test(schema->col_type(3) == STRING, "type of column 3");
     test(schema->col_type(4) == STRING, "type of column 4");
 
@@ -160,7 +168,7 @@ void test_read() {
     test(df->nrows() == 9, "Number of rows");
     test(schema.col_type(0) == BOOL, "type of column 0");
     test(schema.col_type(1) == INT, "type of column 1");
-    test(schema.col_type(2) == FLOAT, "type of column 2");
+    test(schema.col_type(2) == DOUBLE, "type of column 2");
     test(schema.col_type(3) == STRING, "type of column 3");
     test(schema.col_type(4) == STRING, "type of column 4");
 
@@ -176,11 +184,11 @@ void test_read() {
     test(df->get_int(1, 6) == 6, "Value at column 1 row 6");
     test(df->get_int(1, 7) == 7, "Value at column 1 row 7");
 
-    test(df->get_float(2, 0) == 123, "Value at column 2 row 0");
-    test(df->get_float(2, 1), (float) -123.938, 0.001, "Value at column 2 row 1");
-    test(df->get_float(2, 5) == 0, "Value at column 2 row 5");
-    test(df->get_float(2, 6) == -123, "Value at column 2 row 6");
-    test(df->get_float(2, 7) == 444, "Value at column 2 row 7");
+    test(df->get_double(2, 0) == 123, "Value at column 2 row 0");
+    test(df->get_double(2, 1),  -123.938, 0.001, "Value at column 2 row 1");
+    test(df->get_double(2, 5) == 0, "Value at column 2 row 5");
+    test(df->get_double(2, 6) == -123, "Value at column 2 row 6");
+    test(df->get_double(2, 7) == 444, "Value at column 2 row 7");
 
     test(df->get_string(3, 0), "-12444.21123", "Value at column 3 row 0");
     test(df->get_string(3, 1), "hello", "Value at column 3 row 1");
@@ -204,13 +212,13 @@ void test_partial_file_read() {
     test(schema.col_type(0) == BOOL, "type of column 0");
     test(schema.col_type(1) == INT, "type of column 1");
     test(schema.col_type(2) == INT, "type of column 2");
-    test(schema.col_type(3) == FLOAT, "type of column 3");
+    test(schema.col_type(3) == DOUBLE, "type of column 3");
     test(schema.col_type(4) == STRING, "type of column 4");
 
     test(df->get_bool(0, 0) == false, "Value at column 0 row 0");
     test(df->get_int(1, 1) == 3, "Value at column 1 row 1");
     test(df->get_int(2, 1) == 123, "Value at column 2 row 1");
-    test(df->get_float(3, 1), -12444.21123, 0.00001, "Value at column 3 row 1");
+    test(df->get_double(3, 1), -12444.21123, 0.00001, "Value at column 3 row 1");
     test(df->get_string(4, 0), "quoted string", "Value at column 4 row 0");
 
     OK("start middle of file read test.");
@@ -225,13 +233,13 @@ void test_partial_file_read() {
     
     test(schema2.col_type(0) == BOOL, "type of column 0");
     test(schema2.col_type(1) == INT, "type of column 1");
-    test(schema2.col_type(2) == FLOAT, "type of column 2");
+    test(schema2.col_type(2) == DOUBLE, "type of column 2");
     test(schema2.col_type(3) == STRING, "type of column 3");
     test(schema2.col_type(4) == STRING, "type of column 4");
 
     test(df2->get_bool(0, 0) == false, "Value at column 0 row 0");
     test(df2->get_int(1, 1) == 133454, "Value at column 1 row 1");
-    test(df2->get_float(2, 1), -123.938, 0.001, "Value at column 2 row 1");
+    test(df2->get_double(2, 1), -123.938, 0.001, "Value at column 2 row 1");
     test(df2->get_string(3, 1), "hello", "Value at column 3 row 1");
     test(df2->get_string(4, 0), "hello world", "Value at column 4 row 0");
 

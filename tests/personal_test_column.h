@@ -90,15 +90,15 @@ TEST(testColumn, testIntColExitOnFailAsBool) {
   CS4500_ASSERT_EXIT_255(test_int_column_as_bool);
 }
 
-void test_int_column_as_float() {
+void test_int_column_as_double() {
     IntColumn *ic = new IntColumn();
-    ic->as_float();
+    ic->as_double();
     delete ic;
     exit(0);
 }
 
-TEST(testColumn, testIntColExitOnFailAsFloat) { 
-  CS4500_ASSERT_EXIT_255(test_int_column_as_float);
+TEST(testColumn, testIntColExitOnFailAsDouble) { 
+  CS4500_ASSERT_EXIT_255(test_int_column_as_double);
 }
 
 void test_int_column_as_string() {
@@ -112,80 +112,80 @@ TEST(testColumn, testIntColExitOnFailAsString) {
   CS4500_ASSERT_EXIT_255(test_int_column_as_string);
 }
 
-/******* Test FloatColumn **********/
+/******* Test DoubleColumn **********/
 
 /**
- * Floatcolumn can push float on, and get them back. Also checks size and set.
+ * Doublecolumn can push double on, and get them back. Also checks size and set.
  */
-void test_float_column() {
-    FloatColumn *ic = new FloatColumn();
-    ASSERT_EQ(ic->size(), 0);
+void test_double_column() {
+    DoubleColumn *dc = new DoubleColumn();
+    ASSERT_EQ(dc->size(), 0);
 
     for (int i = 0 ; i < 5000; i++) {
-      ic->push_back(i / 8.0);
+      dc->push_back(i / 8.0);
     }
 
-    ASSERT_EQ(ic->size(), 5000);
-    ASSERT_FLOAT_EQ(ic->get(4999), 4999 / 8.0);
+    ASSERT_EQ(dc->size(), 5000);
+    ASSERT_FLOAT_EQ(dc->get(4999), 4999 / 8.0);
 
-    ic->set(1555, 718237);
-    ASSERT_FLOAT_EQ(ic->get(1555), 718237);
+    dc->set(1555, 718237);
+    ASSERT_FLOAT_EQ(dc->get(1555), 718237);
 
-    delete ic;
+    delete dc;
 }
 
-TEST(testColumn, testFloatCol) {
-    test_float_column();
+TEST(testColumn, testDoubleCol) {
+    test_double_column();
 }
 
 /**
- * FloatColumn returns the correct type.
+ * DoubleColumn returns the correct type.
  */
-void test_float_column_type() {
-    FloatColumn *fc = new FloatColumn();
-    Column *c = new FloatColumn();
+void test_double_column_type() {
+    DoubleColumn *dc = new DoubleColumn();
+    Column *c = new DoubleColumn();
 
-    EXPECT_EQ(fc->get_type(), 'F');
-    EXPECT_EQ(c->get_type(), 'F');
+    EXPECT_EQ(dc->get_type(), 'D');
+    EXPECT_EQ(c->get_type(), 'D');
     
     delete c;
-    delete fc;
+    delete dc;
 }
 
-TEST(testColumn, testFloatColType) {
-    test_float_column_type();
+TEST(testColumn, testDoubleColType) {
+    test_double_column_type();
 }
 
 /**
- * FloatColumn can be created with a variable number of arguments
+ * DoubleColumn can be created with a variable number of arguments
  */
-void test_float_column_var_args() {
-    FloatColumn *fc = new FloatColumn(6, -1234.5, 1.2, 0.0, 1.0, 0.00012345, 0.4553);
+void test_double_column_var_args() {
+    DoubleColumn *dc = new DoubleColumn(6, -1234.5, 1.2, 0.0, 1.0, 0.00012345, 0.4553);
 
-    EXPECT_EQ(fc->get_type(), 'F');
-    EXPECT_EQ(fc->size(), 6);
+    EXPECT_EQ(dc->get_type(), 'D');
+    EXPECT_EQ(dc->size(), 6);
 
-    EXPECT_FLOAT_EQ(fc->get(0), -1234.5);
-    EXPECT_FLOAT_EQ(fc->get(1), 1.2);
-    EXPECT_FLOAT_EQ(fc->get(2), 0.0);
-    EXPECT_FLOAT_EQ(fc->get(3), 1.0);
-    EXPECT_FLOAT_EQ(fc->get(4), 0.00012345);
-    EXPECT_FLOAT_EQ(fc->get(5), 0.4553);
+    EXPECT_FLOAT_EQ(dc->get(0), -1234.5);
+    EXPECT_FLOAT_EQ(dc->get(1), 1.2);
+    EXPECT_FLOAT_EQ(dc->get(2), 0.0);
+    EXPECT_FLOAT_EQ(dc->get(3), 1.0);
+    EXPECT_FLOAT_EQ(dc->get(4), 0.00012345);
+    EXPECT_FLOAT_EQ(dc->get(5), 0.4553);
 
-    fc->push_back(-123.456);
-    EXPECT_FLOAT_EQ(fc->get(6), -123.456);
+    dc->push_back(-123.456);
+    EXPECT_FLOAT_EQ(dc->get(6), -123.456);
 
-    delete fc;
+    delete dc;
 }
 
-TEST(testColumn, testFloatColVarArgsConstructor) {
-    test_float_column_var_args();
+TEST(testColumn, testDoubleColVarArgsConstructor) {
+    test_double_column_var_args();
 }
 
 
 /******* Test StringColumn **********/
 /**
- * StringColumn can push float on, and get them back. Also checks size and set.
+ * StringColumn can push double on, and get them back. Also checks size and set.
  */
 void test_string_column() {
     StringColumn *ic = new StringColumn();
@@ -263,7 +263,7 @@ TEST(testColumn, testStringColVarArgsConstructor) {
 /******* Test BoolColumn **********/
 
 /**
- * BoolColumn can push float on, and get them back. Also checks size and set.
+ * BoolColumn can push double on, and get them back. Also checks size and set.
  */
 void test_bool_column() {
     BoolColumn *ic = new BoolColumn();
@@ -362,15 +362,15 @@ TEST(testColumn, testBoolColExitOnFailAsBool) {
   CS4500_ASSERT_EXIT_255(test_bool_column_as_int);
 }
 
-void test_bool_column_as_float() {
+void test_bool_column_as_double() {
     BoolColumn *bc = new BoolColumn();
-    bc->as_float();
+    bc->as_double();
     delete bc;
     exit(0);
 }
 
-TEST(testColumn, testBoolColExitOnFailAsFloat) { 
-  CS4500_ASSERT_EXIT_255(test_bool_column_as_float);
+TEST(testColumn, testBoolColExitOnFailAsDouble) { 
+  CS4500_ASSERT_EXIT_255(test_bool_column_as_double);
 }
 
 void test_bool_column_as_string() {

@@ -13,7 +13,7 @@ enum ColumnType {
     UNKNOWN = 0,
     BOOL = 'B', 
     INT = 'I', 
-    FLOAT = 'F',
+    DOUBLE = 'D',
     STRING = 'S'
 };
 
@@ -25,7 +25,7 @@ size_t column_type_to_num(char t) {
             return 1;
         case INT:
             return 2;
-        case FLOAT:
+        case DOUBLE:
             return 3;
         case STRING:
             return 4;
@@ -48,7 +48,7 @@ bool is_int(char *c) {
     return true;
 }
 
-bool is_float(char *c) {
+bool is_double(char *c) {
     if (*c == '\0') {
         return false;
     }
@@ -79,7 +79,7 @@ int as_int(char* c) {
     return atoi(c);
 }
 
-float as_float(char* c) {
+double as_double(char* c) {
     return atof(c);
 }
 
@@ -104,15 +104,15 @@ char infer_type(char *c) {
     if (is_int(c)) {
         return INT;
     }
-    // check float
-    if (is_float(c)) {
-        return FLOAT;
+    // check double
+    if (is_double(c)) {
+        return DOUBLE;
     }
     return STRING;
 }
 
 class StringColumn;
-class FloatColumn;
+class DoubleColumn;
 class IntColumn;
 class BoolColumn;
 
@@ -151,8 +151,8 @@ class Column : public Object {
             return nullptr;
         }
         
-        virtual FloatColumn* as_float() {
-            abort_if_not(false, "Column.as_float(): bad conversion");
+        virtual DoubleColumn* as_double() {
+            abort_if_not(false, "Column.as_double(): bad conversion");
             return nullptr;
         }
 
@@ -169,8 +169,8 @@ class Column : public Object {
         virtual void push_back(bool val) {
             abort_if_not(false, "Column.push_back(bool): push_back bad value");
         }
-        virtual void push_back(float val) {
-            abort_if_not(false, "Column.push_back(float): push_back bad value");
+        virtual void push_back(double val) {
+            abort_if_not(false, "Column.push_back(double): push_back bad value");
         }
         virtual void push_back(String* val) {
             abort_if_not(false, "Column.push_back(String*): push_back bad value");
@@ -383,33 +383,33 @@ class IntColumn : public Column {
 };
 
 /*************************************************************************
- * FloatColumn::
- * Holds float values.
+ * DoubleColumn::
+ * Holds double values.
  */
-class FloatColumn : public Column {
+class DoubleColumn : public Column {
     public:
-        float** data_;
+        double** data_;
 
-        FloatColumn() : Column() {
-            data_ = new float*[big_cap_];
-            data_[0] = new float[small_cap_];
+        DoubleColumn() : Column() {
+            data_ = new double*[big_cap_];
+            data_[0] = new double[small_cap_];
         }
 
-        FloatColumn(int n, ...) : Column() {
-            data_ = new float*[big_cap_];
-            data_[0] = new float[small_cap_];
+        DoubleColumn(int n, ...) : Column() {
+            data_ = new double*[big_cap_];
+            data_[0] = new double[small_cap_];
             
             va_list arguments;
             va_start (arguments, n);
 
             for (int i = 0; i < n; i++ ) {
-                float f = va_arg( arguments, double);
+                double f = va_arg( arguments, double);
                 push_back(f);
             }
             va_end(arguments);
         }
 
-        ~FloatColumn() {
+        ~DoubleColumn() {
             for (size_t i = 0; i <= big_len_; i++) {
                 delete[] data_[i];
             }
@@ -424,7 +424,7 @@ class FloatColumn : public Column {
                 // if the big array is full, reallocate and copy over pointers to small arrays
                 if (big_len_ + 1 >= big_cap_) {     
                     big_cap_ *= 2;
-                    float** temp = new float*[big_cap_];
+                    double** temp = new double*[big_cap_];
                     for (size_t i = 0; i <= big_len_; i++) {
                         temp[i] = data_[i];
                     } 
@@ -434,39 +434,39 @@ class FloatColumn : public Column {
 
                 big_len_++;
                 // initialize the next small array
-                data_[big_len_] = new float[small_cap_];
+                data_[big_len_] = new double[small_cap_];
             }   
         }
         
-        // gets the float at the index idx
+        // gets the double at the index idx
         // if idx is out of bounds, exit
-        float get(size_t idx) {
-            abort_if_not(idx < size(), "FloatColumn.get(): index out of bounds");
+        double get(size_t idx) {
+            abort_if_not(idx < size(), "DoubleColumn.get(): index out of bounds");
             size_t big_idx = idx / small_cap_;
             size_t small_idx = idx % small_cap_;
             return data_[big_idx][small_idx];
         }
 
-        FloatColumn* as_float() {
-            return dynamic_cast<FloatColumn*>(this);
+        DoubleColumn* as_double() {
+            return dynamic_cast<DoubleColumn*>(this);
         }
 
-        virtual void push_back(float val) {
+        virtual void push_back(double val) {
             check_and_reallocate_();
             data_[big_len_][small_len_] = val;
             small_len_++;
         }
 
         /** Set value at idx. An out of bound idx is undefined.  */
-        void set(size_t idx, float val) {
+        void set(size_t idx, double val) {
             size_t big_idx = idx / small_cap_;
             size_t small_idx = idx % small_cap_;
-            abort_if_not(idx < size(), "FloatColumn.set(): index out of bounds");
+            abort_if_not(idx < size(), "DoubleColumn.set(): index out of bounds");
             data_[big_idx][small_idx] = val;
         }
 
         char get_type_() {
-            return FLOAT;
+            return DOUBLE;
         }
 };
 

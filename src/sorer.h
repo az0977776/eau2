@@ -206,8 +206,8 @@ class SOR : public Object {
                             case INT:
                                 df_row.set(i, 0);
                                 break;
-                            case FLOAT:
-                                df_row.set(i, (float) 0.0);
+                            case DOUBLE:
+                                df_row.set(i, 0.0);
                                 break;
                             case STRING:
                                 df_row.set(i, &empty_string);
@@ -227,9 +227,9 @@ class SOR : public Object {
                                 df_row.set(i, as_int(row[i]));
                                 break;
                             }
-                            case FLOAT:
+                            case DOUBLE:
                             {
-                                df_row.set(i, as_float(row[i]));
+                                df_row.set(i, as_double(row[i]));
                                 break;
                             }
                             case STRING:

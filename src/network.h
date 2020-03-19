@@ -522,6 +522,12 @@ class Client : public Network {
             close(client_listen_fd_);
         }
 
+        // get the index of this client in the directory of the server
+        size_t get_index() {
+            // TODO: get actual node index
+            return 0;
+        }
+
         virtual sockaddr_in get_sockaddr() {
             struct sockaddr_in addr;
             addr.sin_family = AF_INET;

@@ -17,12 +17,12 @@
  *       It was choosen to exit on bad changes
  */
 void test_row_constructor() {
-    Schema schema("IFSBB");
+    Schema schema("IDSBB");
     Row row(schema);
     
     ASSERT_EQ(row.width(), schema.width());
     EXPECT_EQ(row.col_type(0), 'I');
-    EXPECT_EQ(row.col_type(1), 'F');
+    EXPECT_EQ(row.col_type(1), 'D');
     EXPECT_EQ(row.col_type(2), 'S');
     EXPECT_EQ(row.col_type(3), 'B');
     EXPECT_EQ(row.col_type(4), 'B');
@@ -45,13 +45,13 @@ TEST(testRow, testRowConstructor) {
  * This checks both the first set, and reseting the values.
  */
 void test_row_set_and_get() {
-    Schema schema("BIFS");
+    Schema schema("BIDS");
     Row row(schema);
     String str1("string 1");
     String str2("string 2");
 
-    float f1 = 123.456;
-    float f2 = 654.321;
+    double f1 = 123.456;
+    double f2 = 654.321;
     
     row.set(0, true);
     row.set(1, 1234);
@@ -62,7 +62,7 @@ void test_row_set_and_get() {
 
     EXPECT_TRUE(row.get_bool(0));
     EXPECT_EQ(row.get_int(1), 1234);
-    EXPECT_FLOAT_EQ(row.get_float(2), f1);
+    EXPECT_FLOAT_EQ(row.get_double(2), f1);
     EXPECT_TRUE(row.get_string(3)->equals(&str1));
 
     // reset row values
@@ -73,7 +73,7 @@ void test_row_set_and_get() {
 
     EXPECT_FALSE(row.get_bool(0));
     EXPECT_EQ(row.get_int(1), 4321);
-    EXPECT_FLOAT_EQ(row.get_float(2), f2);
+    EXPECT_FLOAT_EQ(row.get_double(2), f2);
     EXPECT_TRUE(row.get_string(3)->equals(&str2));
 }
 
@@ -85,7 +85,7 @@ TEST(testRow, testRowSetAndGet) {
  * Can the index of the row in the dataframe be set and accessed in a row.
  */
 void test_row_set_row_idx() {
-    Schema schema("BIFS");
+    Schema schema("BIDS");
     Row row(schema);
 
     row.set_idx(100);
@@ -106,13 +106,13 @@ class TestRowVisitFielder : public Fielder {
     public:
         bool b_;
         int i_;
-        float f_;
+        double f_;
         String* s_;  // does not own
         size_t col_idx_;
         bool called_start_;
         bool called_done_;
 
-        TestRowVisitFielder(bool b, int i, float f, String* s) {
+        TestRowVisitFielder(bool b, int i, double f, String* s) {
             b_ = b;
             i_ = i;
             f_ = f;
@@ -137,7 +137,7 @@ class TestRowVisitFielder : public Fielder {
             col_idx_++;
         }
 
-        virtual void accept(float f) {
+        virtual void accept(double f) {
             EXPECT_FLOAT_EQ(f, f_); // equal to the initial values
             col_idx_++;
         }
@@ -167,12 +167,12 @@ class TestRowVisitFielder : public Fielder {
  * accepted, and that all Fielder methods are called.
  */
 void test_row_visit() {
-    Schema schema("BIFS");
+    Schema schema("BIDS");
     Row row(schema);
 
     String str1("string 1");
     String str2("string 1");
-    float f1 = 123.456;
+    double f1 = 123.456;
     
     row.set(0, true);
     row.set(1, 1234);

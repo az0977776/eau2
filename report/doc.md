@@ -17,7 +17,7 @@ To setup the system, the registration server must first be started. Clients (KV 
 This layer provides abstractions like the distributed dataframe and arrays. 
 
 ### Distributed DataFrame and Column
-A DataFrame represents multiple columns of data that each hold a specific type (`String`, `float`, `int`, `bool`). A column holds chunks that each hold actual values. A dataframe object does not actually hold the values directly; there are two layers of indirection needed when accessing a value inside a dataframe. 
+A DataFrame represents multiple columns of data that each hold a specific type (`String`, `double`, `int`, `bool`). A column holds chunks that each hold actual values. A dataframe object does not actually hold the values directly; there are two layers of indirection needed when accessing a value inside a dataframe. 
 
 A dataframe holds keys to its columns and a column holds keys to its chunks. When accessing a value inside a dataframe, there will be two key-value store lookups. The first lookup is getting the column from the key-value store using the column key and the second lookup is getting the chunk from the key-value store using the chunk key. Then there is a final access to get the value in the chunk.
 
@@ -64,7 +64,7 @@ A `Chunk` represents a subset of a `Column` Object. A `Chunk` always holds a con
 ## Column
 A `Column` is a single column of a `DataFrame` Object. A `Column` can hold values of the following types:
 - `String` object
-- `float`
+- `double`
 - `int`
 - `bool`
 A `Column` object holds `Key` objects that are associated with `Value` objects representing `Chunks` that hold the data in the column.

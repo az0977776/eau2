@@ -17,27 +17,27 @@
  * A function to creat a DataFrame with default values.
  */
 DataFrame* build_data_frame(int size, String& str) {
-    Schema schema("BIFS");
+    Schema schema("BIDS");
 
     DataFrame* df = new DataFrame(schema);
     Row r(df->get_schema());
 
-    float f = 0.1;
+    double d = 0.1;
 
     for(int i = 0; i < size - 1; i++) {
-        f = (i * 1.0) / (1.0 * size);
+        d = (i * 1.0) / (1.0 * size);
         r.set(0, i % 2 == 0);
         r.set(1, i);
-        r.set(2, f);
+        r.set(2, d);
         r.set(3, &str);
         df->add_row(r);
     }
 
     // add a nullptr for string
-    f = ((1.0 * size) - 1.0) / (1.0 * size);
+    d = ((1.0 * size) - 1.0) / (1.0 * size);
     r.set(0, (size - 1) % 2 == 0);
     r.set(1, size - 1);
-    r.set(2, f);
+    r.set(2, d);
     r.set(3, nullptr);
     df->add_row(r);
 
@@ -50,7 +50,7 @@ DataFrame* build_data_frame(int size, String& str) {
  * as unspecified by the API.
  */
 void test_dataframe_constructor_by_schema() {
-    Schema schema1("IFSBB");
+    Schema schema1("IDSBB");
     Schema schema2("I");
 
     DataFrame df1(schema1);
@@ -61,7 +61,7 @@ void test_dataframe_constructor_by_schema() {
 
     ASSERT_EQ(df2.ncols(), 1);
     EXPECT_EQ(df1.get_schema().col_type(0), 'I');
-    EXPECT_EQ(df1.get_schema().col_type(1), 'F');
+    EXPECT_EQ(df1.get_schema().col_type(1), 'D');
     EXPECT_EQ(df1.get_schema().col_type(2), 'S');
     EXPECT_EQ(df1.get_schema().col_type(3), 'B');
     EXPECT_EQ(df1.get_schema().col_type(4), 'B');
@@ -93,7 +93,7 @@ void test_dataframe_copy_constructor() {
     
     EXPECT_EQ(df->get_schema().col_type(0), 'B');
     EXPECT_EQ(df->get_schema().col_type(1), 'I');
-    EXPECT_EQ(df->get_schema().col_type(2), 'F');
+    EXPECT_EQ(df->get_schema().col_type(2), 'D');
     EXPECT_EQ(df->get_schema().col_type(3), 'S');
 
     EXPECT_EQ(df->get_int(1, 4), 4);
@@ -122,7 +122,7 @@ TEST(testDataFrame, testDataFrameCopyConstructor) {
  * Does the dataframe return the correct schema, even after adding columns.
  */
 void test_dataframe_get_schema() {
-    Schema schema("IBFS");
+    Schema schema("IBDS");
     String col_name("column name");
 
     schema.add_column('I');
@@ -196,7 +196,7 @@ void test_dataframe_get_values() {
     
     EXPECT_EQ(df->get_schema().col_type(0), 'B');
     EXPECT_EQ(df->get_schema().col_type(1), 'I');
-    EXPECT_EQ(df->get_schema().col_type(2), 'F');
+    EXPECT_EQ(df->get_schema().col_type(2), 'D');
     EXPECT_EQ(df->get_schema().col_type(3), 'S');
 
     EXPECT_FALSE(df->get_bool(0, 1));
@@ -205,8 +205,8 @@ void test_dataframe_get_values() {
     EXPECT_EQ(df->get_int(1, 0), 0);
     EXPECT_EQ(df->get_int(1, 4), 4);
     
-    EXPECT_FLOAT_EQ(df->get_float(2, 0), 0);
-    EXPECT_FLOAT_EQ(df->get_float(2, 2), 2.0 / (1.0 * size));
+    EXPECT_FLOAT_EQ(df->get_double(2, 0), 0);
+    EXPECT_FLOAT_EQ(df->get_double(2, 2), 2.0 / (1.0 * size));
     
     EXPECT_TRUE(df->get_string(3, 1)->equals(&s));
     EXPECT_EQ(df->get_string(3, size - 1), nullptr);
@@ -232,7 +232,7 @@ void test_dataframe_set_values() {
     
     ASSERT_EQ(df->get_schema().col_type(0), 'B');
     ASSERT_EQ(df->get_schema().col_type(1), 'I');
-    ASSERT_EQ(df->get_schema().col_type(2), 'F');
+    ASSERT_EQ(df->get_schema().col_type(2), 'D');
     ASSERT_EQ(df->get_schema().col_type(3), 'S');
 
     EXPECT_FALSE(df->get_bool(0, 1));
@@ -249,14 +249,14 @@ void test_dataframe_set_values() {
     EXPECT_EQ(df->get_int(1, 0), -1000);
     EXPECT_EQ(df->get_int(1, 4), -999);
     
-    EXPECT_FLOAT_EQ(df->get_float(2, 0), 0);
-    EXPECT_FLOAT_EQ(df->get_float(2, 2), 2.0 / (1.0 * size));
-    float f1 = 1.2345001;
-    float f2 = 1920284.9;
+    EXPECT_FLOAT_EQ(df->get_double(2, 0), 0);
+    EXPECT_FLOAT_EQ(df->get_double(2, 2), 2.0 / (1.0 * size));
+    double f1 = 1.2345001;
+    double f2 = 1920284.9;
     df->set(2, 0, f1);
     df->set(2, 2, f2);
-    EXPECT_FLOAT_EQ(df->get_float(2, 0), f1);
-    EXPECT_FLOAT_EQ(df->get_float(2, 2), f2);
+    EXPECT_FLOAT_EQ(df->get_double(2, 0), f1);
+    EXPECT_FLOAT_EQ(df->get_double(2, 2), f2);
     
     EXPECT_TRUE(df->get_string(3, 1)->equals(&s));
     EXPECT_EQ(df->get_string(3, size - 1), nullptr);
@@ -324,19 +324,19 @@ void test_dataframe_fill_row() {
     
     ASSERT_EQ(df->get_schema().col_type(0), 'B');
     ASSERT_EQ(df->get_schema().col_type(1), 'I');
-    ASSERT_EQ(df->get_schema().col_type(2), 'F');
+    ASSERT_EQ(df->get_schema().col_type(2), 'D');
     ASSERT_EQ(df->get_schema().col_type(3), 'S');
 
     df->fill_row(6, row);
     EXPECT_EQ(row.get_bool(0), df->get_bool(0, 6));
     EXPECT_EQ(row.get_int(1), df->get_int(1, 6));
-    EXPECT_FLOAT_EQ(row.get_float(2), df->get_float(2, 6));
+    EXPECT_FLOAT_EQ(row.get_double(2), df->get_double(2, 6));
     EXPECT_TRUE(row.get_string(3)->equals(df->get_string(3, 6)));
 
     df->fill_row(9, row);
     EXPECT_EQ(row.get_bool(0), df->get_bool(0, 9));
     EXPECT_EQ(row.get_int(1), df->get_int(1, 9));
-    EXPECT_FLOAT_EQ(row.get_float(2), df->get_float(2, 9));
+    EXPECT_FLOAT_EQ(row.get_double(2), df->get_double(2, 9));
     EXPECT_EQ(row.get_string(3), df->get_string(3, 9));  // check for nullptr 
 
     delete df;
@@ -364,7 +364,7 @@ class FilterOddRower : public Rower {
 
 void test_filter() {
     // creates a schema and adds a column with a name
-    Schema s("IBFS");
+    Schema s("IBDS");
     String stri("cow");
     s.add_column('I');
 
@@ -377,7 +377,7 @@ void test_filter() {
     for(int i = 0; i < size; i++) {
       r.set(0, i);
       r.set(1, true);
-      r.set(2, (float)(size * 1.0 / (i + 1)));
+      r.set(2, (size * 1.0 / (i + 1)));
       r.set(3, &str);
       r.set(4, i * 2);
       df.add_row(r);
@@ -413,7 +413,7 @@ class Taxes : public Rower {
         
         bool accept(Row& r) {
             // calculates the amoubt of tax for each row
-            int tx = (int)r.get_int(salary) * r.get_float(rate);
+            int tx = (int)r.get_int(salary) * r.get_double(rate);
             tx -= r.get_bool(isded) ? r.get_int(ded) : 0;
             df_->set(taxes, r.get_idx(), tx);
             return true;
@@ -422,7 +422,7 @@ class Taxes : public Rower {
 
 void test_map() {
     // Creating a data frame with the right structure 
-    Schema scm("IFBII");       // the schema
+    Schema scm("IDBII");       // the schema
     DataFrame df(scm);         // the data frame  
 
     // populdates the DataFrame
@@ -430,7 +430,7 @@ void test_map() {
     Row r(df.get_schema());
     for(int i = 0; i < size; i++) {
         r.set(0, i * 100);
-        r.set(1, (float)(i * 40.0 / size));
+        r.set(1, (i * 40.0 / size));
         r.set(2, false);
         r.set(3, i);
         r.set(4, 0);
@@ -444,7 +444,7 @@ void test_map() {
 
     // ensures that the tax values in the DataFrame were updated
     for (int i = 0; i < size; i++) {
-        ASSERT_EQ(df.get_int(4, i), df.get_int(0, i) * df.get_float(1, i));
+        ASSERT_EQ(df.get_int(4, i), df.get_int(0, i) * df.get_double(1, i));
     }
 }
 
@@ -479,7 +479,7 @@ void test_dataframe_print() {
     
     EXPECT_EQ(df->get_schema().col_type(0), 'B');
     EXPECT_EQ(df->get_schema().col_type(1), 'I');
-    EXPECT_EQ(df->get_schema().col_type(2), 'F');
+    EXPECT_EQ(df->get_schema().col_type(2), 'D');
     EXPECT_EQ(df->get_schema().col_type(3), 'S');
 
     

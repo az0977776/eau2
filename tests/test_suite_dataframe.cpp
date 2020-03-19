@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
 
 // TESTS TODO:
 /**
- * exit with error code -1 int, float, string column
+ * exit with error code -1 int, double, string column
  * column push worng type onto it
  * StringArray ... is this needed to be tested?
  * row get/set wrong index

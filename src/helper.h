@@ -15,7 +15,8 @@ class Sys {
   // Printing functions
   Sys& p(char* c) { std::cout << c; return *this; }
   Sys& p(bool c) { std::cout << c; return *this; }
-  Sys& p(float c) { std::cout << c; return *this; }  
+  Sys& p(float c) { std::cout << c; return *this; }
+  Sys& p(double c) { std::cout << c; return *this; }  
   Sys& p(int i) { std::cout << i;  return *this; }
   Sys& p(size_t i) { std::cout << i;  return *this; }
   Sys& p(const char* c) { std::cout << c;  return *this; }

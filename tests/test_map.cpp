@@ -58,8 +58,8 @@ class Fibonacci : public Rower {
 };
 
 /**
- * Product calculates the product of all floats and ints in the row, then sets the last
- * float column with the value and keeps a running product.
+ * Product calculates the product of all doubles and ints in the row, then sets the last
+ * double column with the value and keeps a running product.
  */
 class Product : public Rower {  
     public:
@@ -67,9 +67,9 @@ class Product : public Rower {
         double product_;
 
         size_t first_int_col_ = 1;
-        size_t first_float_col_ = 2;
+        size_t first_double_col_ = 2;
         size_t second_int_col_ = 5;
-        size_t second_float_col_ = 6;
+        size_t second_double_col_ = 6;
         size_t third_int_col_ = 9;
 
         Product(DataFrame* df) {
@@ -78,16 +78,16 @@ class Product : public Rower {
         }
 
         /**
-         * comuptes the product of all int and float columns. Updates this rowers product value
-         * and sets the last float column with the value. 
+         * comuptes the product of all int and double columns. Updates this rowers product value
+         * and sets the last double column with the value. 
          * NOTE: product may overflow
          */
         bool accept(Row& r) {
-            float result = r.get_int(first_int_col_) * r.get_float(first_float_col_) \
-                        * r.get_int(second_int_col_) * r.get_float(second_float_col_) \
+            double result = r.get_int(first_int_col_) * r.get_double(first_double_col_) \
+                        * r.get_int(second_int_col_) * r.get_double(second_double_col_) \
                         * r.get_int(third_int_col_);
             product_ *= result;
-            df_->set(second_float_col_, r.get_idx(), result);
+            df_->set(second_double_col_, r.get_idx(), result);
 
             return true;
         }
@@ -110,7 +110,7 @@ class Product : public Rower {
 
 int main() {
 
-    SOR sorer("../data/data.sor");
+    SOR sorer("../data/test.sor");
 
     DataFrame* df = sorer.read();
     

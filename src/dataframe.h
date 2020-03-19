@@ -44,9 +44,9 @@ class DataFrameAddFielder : public Fielder {
             idx_++;
         }
         
-        void accept(float f) {
-            abort_if_not(idx_ < num_cols_, "DataFrameAddFielder.accept(float): Too many fields in row for DataFrame");
-            cols_[idx_]->push_back(f);
+        void accept(double d) {
+            abort_if_not(idx_ < num_cols_, "DataFrameAddFielder.accept(double): Too many fields in row for DataFrame");
+            cols_[idx_]->push_back(d);
             idx_++;
         }
 
@@ -89,9 +89,9 @@ class PrintDataFrameFielder : public Fielder {
             p(">");
         }
         
-        void accept(float f) {
+        void accept(double d) {
             p("<");
-            p(f);
+            p(d);
             p(">");
         }
 
@@ -201,8 +201,8 @@ class DataFrameOriginal : public Object {
                     case INT:
                         cols_[i] = new IntColumn();
                         break;
-                    case FLOAT:
-                        cols_[i] = new FloatColumn();
+                    case DOUBLE:
+                        cols_[i] = new DoubleColumn();
                         break;
                     case STRING:
                         cols_[i] = new StringColumn();
@@ -259,9 +259,9 @@ class DataFrameOriginal : public Object {
             return cols_[col]->as_bool()->get(row);
         }
 
-        float get_float(size_t col, size_t row) {
-            abort_if_not(col < cols_len_, "DataFrameOriginal.get_float(): column index out of bounds");
-            return cols_[col]->as_float()->get(row);
+        double get_double(size_t col, size_t row) {
+            abort_if_not(col < cols_len_, "DataFrameOriginal.get_double(): column index out of bounds");
+            return cols_[col]->as_double()->get(row);
         }
 
         String* get_string(size_t col, size_t row) {
@@ -282,9 +282,9 @@ class DataFrameOriginal : public Object {
             cols_[col]->as_bool()->set(row, val);
         }
 
-        void set(size_t col, size_t row, float val) {
-            abort_if_not(col < cols_len_, "DataFrameOriginal.set(float): column index out of bounds");
-            cols_[col]->as_float()->set(row, val);
+        void set(size_t col, size_t row, double val) {
+            abort_if_not(col < cols_len_, "DataFrameOriginal.set(double): column index out of bounds");
+            cols_[col]->as_double()->set(row, val);
         }
 
         void set(size_t col, size_t row, String* val) {
@@ -307,8 +307,8 @@ class DataFrameOriginal : public Object {
                     case INT:
                         row.set(i, cols_[i]->as_int()->get(idx));
                         break;
-                    case FLOAT:
-                        row.set(i, cols_[i]->as_float()->get(idx));
+                    case DOUBLE:
+                        row.set(i, cols_[i]->as_double()->get(idx));
                         break;
                     case STRING:
                         row.set(i, cols_[i]->as_string()->get(idx));

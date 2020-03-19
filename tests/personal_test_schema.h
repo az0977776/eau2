@@ -14,7 +14,7 @@
  * Is the schema created with the corrent column types from string.
  */
 void test_schema_char_constructor() {
-    Schema* s = new Schema("IIBSFF");
+    Schema* s = new Schema("IIBSDD");
 
     ASSERT_EQ(s->width(), 6);
     ASSERT_EQ(s->length(), 0);
@@ -23,8 +23,8 @@ void test_schema_char_constructor() {
     EXPECT_EQ(s->col_type(1), 'I');
     EXPECT_EQ(s->col_type(2), 'B');
     EXPECT_EQ(s->col_type(3), 'S');
-    EXPECT_EQ(s->col_type(4), 'F');
-    EXPECT_EQ(s->col_type(5), 'F');
+    EXPECT_EQ(s->col_type(4), 'D');
+    EXPECT_EQ(s->col_type(5), 'D');
 
     delete s;
 }
@@ -57,7 +57,7 @@ void test_schema_copy_constructor() {
     Schema s;
 
     s.add_column('I');
-    s.add_column('F');
+    s.add_column('D');
     s.add_column('S');
 
     s.add_row();
@@ -111,7 +111,7 @@ void test_schema_add_col() {
     ASSERT_EQ(s.width(), 0);
 
     s.add_column('I');
-    s.add_column('F');
+    s.add_column('D');
     s.add_column('S');
 
     ASSERT_EQ(s.width(), 3);
@@ -136,7 +136,7 @@ void test_schema_equals() {
     s.add_row();
 
     s.add_column('I');
-    s.add_column('F');
+    s.add_column('D');
     s.add_column('S');
 
     same_s.add_row();
@@ -144,7 +144,7 @@ void test_schema_equals() {
     same_s.add_row();
 
     same_s.add_column('I');
-    same_s.add_column('F');
+    same_s.add_column('D');
     same_s.add_column('S');
 
     ASSERT_EQ(s.width(), 3);
