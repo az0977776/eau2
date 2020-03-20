@@ -5,9 +5,12 @@
 
 #include "row.h"
 #include "object.h"
+#include "string.h"
 #include "schema.h"
 #include "column.h"
 #include "thread.h"
+#include "keyvaluestore.h"
+#include "keyvalue.h"
 
 /*****************************************************************************
 Helper classes for DataFrame
@@ -458,5 +461,81 @@ class DataFrame: public DataFrameOriginal{
             }
             delete[] pool;
             delete[] rowers;
+        }
+
+        static DataFrame* fromArray(Key k, KVStore kvs, size_t size, String** vals) {
+            Schema s("S");
+            DataFrame* df = new DataFrame(s);
+            Row r(s);
+
+            for (int i = 0; i < size; i++) {
+                r.set(0, vals[i]);
+                df->add_row(r);
+            }
+            
+            return df;
+        } 
+
+        static DataFrame* fromArray(Key k, KVStore kvs, size_t size, double* vals) {
+            Schema s("D");
+            DataFrame* df = new DataFrame(s);
+            Row r(s);
+
+            for (int i = 0; i < size; i++) {
+                r.set(0, vals[i]);
+                df->add_row(r);
+            }
+
+            return df;
+        } 
+
+        static DataFrame* fromArray(Key k, KVStore kvs, size_t size, int* vals) {
+            Schema s("I");
+            DataFrame* df = new DataFrame(s);
+            Row r(s);
+
+            for (int i = 0; i < size; i++) {
+                r.set(0, vals[i]);
+                df->add_row(r);
+            }
+
+            return df;
+        } 
+
+        static DataFrame* fromArray(Key k, KVStore kvs, size_t size, bool* vals) {
+            Schema s("B");
+            DataFrame* df = new DataFrame(s);
+            Row r(s);
+
+            for (int i = 0; i < size; i++) {
+                r.set(0, vals[i]);
+                df->add_row(r);
+            }
+
+            return df;
+        } 
+
+        static DataFrame* fromScalar(Key k, KVStore kvs, String* val) {
+            return DataFrame::fromArray(k, kvs, 1, &val);
+        } 
+
+        static DataFrame* fromScalar(Key k, KVStore kvs, double val) {
+            return DataFrame::fromArray(k, kvs, 1, &val);
+        } 
+
+        static DataFrame* fromScalar(Key k, KVStore kvs, int val) {
+            return DataFrame::fromArray(k, kvs, 1, &val);
+        } 
+
+        static DataFrame* fromScalar(Key k, KVStore kvs, bool val) {
+            return DataFrame::fromArray(k, kvs, 1, &val);
+        } 
+
+        
+        // <num cols><num rows><schema>[<key (null terminated)><node index> ...]
+        char* serialize() {
+            size_t buff_len = 2 * sizeof(size_t) + ncols();
+            size_t num_keys = ncols() * nrows() / CHUNK_SIZE;
+            size_t key_size = 0;
         }
 };

@@ -83,7 +83,6 @@ class Bucket : public Array<Object> {
 * Map does not own any objects passed to it.
 * @author barth.c@husky.neu.edu
 */
-template <class K, class V>
 class Map : public Object {
     public:
         Bucket **buckets_;
@@ -127,7 +126,7 @@ class Map : public Object {
         * @param key is the object to map the value to
         * @param value the object to add to the Map
         */
-        void add(K* key, V* value) {
+        void add(Key* key, Value* value) {
             // if the key does not exist in the bucket, add key and value to their array
             size_t h = key->hash() % num_buckets_;
             Object* o = buckets_[h]->get_val(key);
@@ -159,10 +158,10 @@ class Map : public Object {
         * Returns a copy of the Map
         * @return the copy of this map
         */
-        Map<K, V>* copy(){
-            Map<K, V> *m0 = new Map<K, V>();
+        Map* copy(){
+            Map *m0 = new Map();
             for (size_t i = 0; i < size(); i++) {
-                K *key = keys_->get(i);
+                Key* key = keys_->get(i);
                 m0->add(key, get(key));
             }
             return m0;
@@ -173,22 +172,22 @@ class Map : public Object {
         * @param key the key to get the value from
         * @return the value associated with the key
         */
-        V* get(K* key) {
+        Value* get(Key* key) {
             size_t h = key->hash() % num_buckets_;
-            return buckets_[h]->get_val(key);
+            return dynamic_cast<Value*>(buckets_[h]->get_val(key));
         }
 
         /**
         * Returns the Map's keys.
         */
-        K** keys() {
+        Key** keys() {
             return keys_->get_all();
         }
 
         /**
         * Returns all the Map's values
         */
-        V** values() {
+        Value** values() {
             return values_->get_all();
         }
 
@@ -197,9 +196,9 @@ class Map : public Object {
         * @param key the key
         * @return the value of the element removed
         */
-        V* pop_item(K* key) {
+        Value* pop_item(Key* key) {
             size_t h = key->hash() % num_buckets_;
-            Object *ret = buckets_[h]->remove_kvpair(key);
+            Value *ret = dynamic_cast<Value*>(buckets_[h]->remove_kvpair(key));
             if (ret == nullptr) {
                 return ret;
             }
@@ -225,7 +224,7 @@ class Map : public Object {
 
             // check that all key value pairs are equal
             for (size_t i = 0; i < size(); i++) {
-                K *key = keys_->get(i);
+                Key *key = keys_->get(i);
                 if (!get(key)->equals(other->get(key))) {
                     return false;
                 }
@@ -239,8 +238,8 @@ class Map : public Object {
         */
         virtual size_t hash() {
             size_t ret = 0;
-            K** k = keys();
-            V** v = values();
+            Key** k = keys();
+            Value** v = values();
             for (size_t i = 0; i <size(); i++) {
                 ret = ret << 6;
                 ret ^= k[i]->hash();

@@ -1,4 +1,4 @@
-//lang:CwC
+//lang:Cpp
 #pragma once
 
 #include <stdarg.h>
@@ -6,6 +6,9 @@
 
 #include "object.h"
 #include "string.h"
+#include "keyvalue.h"
+#include "keyvaluestore.h"
+#include "vector.h"
 
 static const size_t ARRAY_STARTING_CAP = 4;
 
@@ -116,6 +119,8 @@ class DoubleColumn;
 class IntColumn;
 class BoolColumn;
 
+static const size_t CHUNK_SIZE = sizeof(size_t) * 16;
+
 /**************************************************************************
  * Column ::
  * Represents one column of a data frame which holds values of a single type.
@@ -124,19 +129,31 @@ class BoolColumn;
  * equality. */
 class Column : public Object {
     public:
-        // ensures that small_cap_ is always divisible by sizeof(size_t) for our implementation of BoolColumn
-        // capacity and length of an array inside the array of arrays
-        const size_t small_cap_ = sizeof(size_t) * 16;
-        size_t small_len_;
+        KVStore* kv_;  // external
+        String* col_name_;  // owned
+        Vector<Key*> *chunk_keys_;
 
-        // capaicty and length of array of arrays
-        size_t big_cap_;
-        size_t big_len_;
+        size_t len_;
 
-        Column() {
-            big_cap_ = ARRAY_STARTING_CAP;
-            big_len_ = 0;
-            small_len_ = 0;
+        Column(String* col_name, KVStore* kv) {
+            len_ = 0;
+            kv_ = kv;
+            col_name_ = col_name->clone();
+            chunk_keys_ = new Vector<Key*>();
+        }
+
+        ~Column() {
+            delete col_name_;
+            delete chunk_keys_;
+        }
+
+        char* generate_chunk_name(size_t chunk_idx) {
+            size_t col_name_len = col_name_->size();
+            char* ret = new char[col_name_len + 1 + sizeof(size_t)];
+            memcpy(ret, col_name_->c_str(), col_name_len);
+            ret[col_name_len] = ':';
+            memcpy(ret+col_name_len+1, &chunk_idx, sizeof(size_t));
+            return ret;
         }
 
         /** Type converters: Return same column under its actual type, or
@@ -178,10 +195,10 @@ class Column : public Object {
 
         /** Returns the number of elements in the column. */
         virtual size_t size() {
-            return big_len_ * small_cap_ + small_len_;
+            return len_;
         }
 
-        /** Return the type of this column as a char: 'S', 'B', 'I' and 'F'. */
+        /** Return the type of this column as a char: 'S', 'B', 'I' and 'D'. */
         char get_type() {
             return get_type_();
         }
@@ -190,6 +207,8 @@ class Column : public Object {
         virtual char get_type_() {
             return 0;
         }
+
+
 };
   
 
@@ -199,17 +218,9 @@ class Column : public Object {
  */
 class BoolColumn : public Column {
     public:       
-        size_t** data_;
-     
-        BoolColumn() : Column() {
-            data_ = new size_t*[big_cap_];
-            data_[0] = new size_t[small_cap_ / sizeof(size_t)];
-        }
+        BoolColumn(String* col_name, KVStore* kv) : Column(col_name, kv) { }
 
-        BoolColumn(int n, ...) {
-            data_ = new size_t*[big_cap_];
-            data_[0] = new size_t[small_cap_ / sizeof(size_t)];
-            
+        BoolColumn(String* col_name, KVStore* kv, int n, ...) : Column(col_name, kv) {
             va_list arguments;
             va_start (arguments, n);
             for (int i = 0; i <  n; i++ ) {
@@ -219,59 +230,65 @@ class BoolColumn : public Column {
             va_end(arguments);
         }
 
-        ~BoolColumn() {
-            // deleting the chunks
-            for (size_t i = 0; i <= big_len_; i++) {
-                delete[] data_[i];
-            }
-
-            // deleteing the arrays
-            delete[] data_;
-        }
+        ~BoolColumn() { }
 
         void check_and_reallocate_() {
-            // if small array is full, move to next small array and start from 0
-            if (small_len_ >= small_cap_) {
-                small_len_ = 0;
+            // when the latest chunk is full
+            if (len_ % CHUNK_SIZE == 0) {
+                size_t chunk_idx = len_ / CHUNK_SIZE;
 
-                // if the big array is full, reallocate and copy over pointers to small arrays
-                if (big_len_ + 1 >= big_cap_) {     
-                    big_cap_ *= 2;
-                    size_t** temp = new size_t*[big_cap_];
-                    for (size_t i = 0; i <= big_len_; i++) {
-                        temp[i] = data_[i];
-                    } 
-                    delete[] data_;
-                    data_ = temp;
-                } 
+                char* new_chunk_key = generate_chunk_name(chunk_idx);
 
-                big_len_++;
-                // initialize the next small array
-                data_[big_len_] = new size_t[small_cap_ / sizeof(size_t)];
-            }   
+                Key* k = new Key(0, new_chunk_key);
+                Value* v = new Value(CHUNK_SIZE);
+                kv_->put(*k, *v);
+
+                chunk_keys_->push_back(k);
+            }
         }
 
         virtual void push_back(bool val) {
             check_and_reallocate_();
-            size_t item_idx = small_len_ / sizeof(size_t);
-            size_t bit_idx = small_len_ % sizeof(size_t);
+            size_t chunk_idx = len_ / CHUNK_SIZE;
+            size_t item_idx = len_ % CHUNK_SIZE;
+            Key* chunk_key = chunk_keys_->get(chunk_idx);
+
+            Value* value = kv_->get(*chunk_key);
+            char* v = value->get();
+            size_t buf;
+            memcpy(&buf, v + item_idx * sizeof(size_t), sizeof(size_t));
+            size_t bit_idx = item_idx % sizeof(size_t);
+
             if (val) {
-                data_[big_len_][item_idx] |= (1 << bit_idx);
+                buf |= (1 << bit_idx);
             } else {
-                data_[big_len_][item_idx] &= (~(1 << bit_idx));
+                buf &= (~(1 << bit_idx));
             }
-            small_len_++;
+
+            memcpy(v + item_idx * sizeof(size_t), &buf, sizeof(size_t));
+            Value new_value(CHUNK_SIZE, v);
+            kv_->put(*chunk_key, new_value);
+
+            len_++;
+            delete value;
         }
         
         // gets the bool at the index idx
         // if idx is out of bounds, exit
         bool get(size_t idx) {
             abort_if_not(idx < size(), "BoolColumn.get(): out of bounds");
-            // find the array of arrays, the size_t in the array in the array of array, the bit in the size_t
-            size_t big_idx = idx / small_cap_;
-            size_t small_idx = (idx % small_cap_) / sizeof(size_t);
-            size_t bit = idx % sizeof(size_t);
-            return (data_[big_idx][small_idx] >> bit) & 1;
+            size_t chunk_idx = idx / CHUNK_SIZE;
+            size_t item_idx = idx % CHUNK_SIZE;
+            Key* chunk_key = chunk_keys_->get(chunk_idx);
+
+            Value* value = kv_->get(*chunk_key);
+            char* v = value->get();
+            size_t buf;
+            memcpy(&buf, v + item_idx * sizeof(size_t), sizeof(size_t));
+            size_t bit_idx = item_idx % sizeof(size_t);
+
+            delete value;
+            return (buf >> bit_idx) & 1;
         }
 
         BoolColumn* as_bool() {
@@ -280,14 +297,28 @@ class BoolColumn : public Column {
         /** Set value at idx. An out of bound idx is undefined.  */
         void set(size_t idx, bool val) {
             abort_if_not(idx < size(), "BoolColumn.set(): out of bounds");
-            size_t big_idx = idx / small_cap_;
-            size_t small_idx = (idx % small_cap_) / sizeof(size_t);
-            size_t bit = idx % sizeof(size_t);
+
+            size_t chunk_idx = idx / CHUNK_SIZE;
+            size_t item_idx = idx % CHUNK_SIZE;
+            Key* chunk_key = chunk_keys_->get(chunk_idx);
+
+            Value* value = kv_->get(*chunk_key);
+            char* v = value->get();
+            size_t buf;
+            memcpy(&buf, v + item_idx * sizeof(size_t), sizeof(size_t));
+            size_t bit_idx = item_idx % sizeof(size_t);
+
             if (val) {
-                data_[big_idx][small_idx] |= (1 << bit);
+                buf |= (1 << bit_idx);
             } else {
-                data_[big_idx][small_idx] &= (~(1 << bit));
+                buf &= (~(1 << bit_idx));
             }
+
+            memcpy(v + item_idx * sizeof(size_t), &buf, sizeof(size_t));
+            Value new_value(CHUNK_SIZE, v);
+            kv_->put(*chunk_key, new_value);
+
+            delete value;
         }
 
         char get_type_() {
@@ -301,17 +332,9 @@ class BoolColumn : public Column {
  */
 class IntColumn : public Column {
     public:
-        int** data_;
+        IntColumn(String* col_name, KVStore* kv) : Column(col_name, kv) { }
 
-        IntColumn() : Column() {
-            data_ = new int*[big_cap_];
-            data_[0] = new int[small_cap_];
-        }
-
-        IntColumn(int n, ...) : Column() {
-            data_ = new int*[big_cap_];
-            data_[0] = new int[small_cap_];
-            
+        IntColumn(String* col_name, KVStore* kv, int n, ...) : Column(col_name, kv) {
             va_list arguments;
             va_start (arguments, n);
 
@@ -322,19 +345,22 @@ class IntColumn : public Column {
         }
 
         ~IntColumn() {
-            for (size_t i = 0; i <= big_len_; i++) {
-                delete[] data_[i];
-            }
-            delete[] data_;
         }
         
         // gets the int at the index idx
         // if idx is out of bounds, exit
         int get(size_t idx) {
             abort_if_not(idx < size(), "IntColumn.get(): out of bounds");
-            size_t big_idx = idx / small_cap_;
-            size_t small_idx = idx % small_cap_;
-            return data_[big_idx][small_idx];
+            size_t chunk_idx = idx / CHUNK_SIZE;
+            size_t item_idx = idx % CHUNK_SIZE;
+            Key* chunk_key = chunk_keys_->get(chunk_idx);
+
+            Value* val = kv_->get(*chunk_key);
+            char* v = val->get();
+            int rv = 0;
+            memcpy(&rv, v + item_idx * sizeof(int), sizeof(int));
+            delete val;
+            return rv;
         }
 
         IntColumn* as_int() {
@@ -342,39 +368,50 @@ class IntColumn : public Column {
         }
 
         void check_and_reallocate_() {
-            // if small array is full, move to next small array and start from 0
-            if (small_len_ >= small_cap_) {
-                small_len_ = 0;
+            // when the latest chunk is full
+            if (len_ % CHUNK_SIZE == 0) {
+                size_t chunk_idx = len_ / CHUNK_SIZE;
 
-                // if the big array is full, reallocate and copy over pointers to small arrays
-                if (big_len_ + 1 >= big_cap_) {    
-                    big_cap_ *= 2;
-                    int** temp = new int*[big_cap_];
-                    for (size_t i = 0; i <= big_len_; i++) {
-                        temp[i] = data_[i];
-                    } 
-                    delete[] data_;
-                    data_ = temp;
-                } 
+                char* new_chunk_key = generate_chunk_name(chunk_idx);
 
-                big_len_++;
-                // initialize the next small array
-                data_[big_len_] = new int[small_cap_];
-            }   
+                Key* k = new Key(0, new_chunk_key);
+                Value* v = new Value(CHUNK_SIZE * sizeof(int));
+                kv_->put(*k, *v);
+                
+                chunk_keys_->push_back(k);
+            }
         }
 
         virtual void push_back(int val) {
             check_and_reallocate_();
-            data_[big_len_][small_len_] = val;
-            small_len_++;
+            size_t chunk_idx = len_ / CHUNK_SIZE;
+            size_t item_idx = len_ % CHUNK_SIZE;
+            Key* chunk_key = chunk_keys_->get(chunk_idx);
+
+            Value* value = kv_->get(*chunk_key);
+            char* v = value->get();
+            memcpy(v + item_idx * sizeof(int), &val, sizeof(int));
+            Value new_value(CHUNK_SIZE, v);
+            kv_->put(*chunk_key, new_value);
+
+            len_++;
+            delete value;
         }
 
         /** Set value at idx. An out of bound idx is undefined.  */
         void set(size_t idx, int val) {
             abort_if_not(idx < size(), "IntColumn.set(): Index out of bounds");
-            size_t big_idx = idx / small_cap_;
-            size_t small_idx = idx % small_cap_;
-            data_[big_idx][small_idx] = val;
+            size_t chunk_idx = idx / CHUNK_SIZE;
+            size_t item_idx = idx % CHUNK_SIZE;
+            Key* chunk_key = chunk_keys_->get(chunk_idx);
+
+            Value* v = kv_->get(*chunk_key);
+            char* val_buf = v->get();
+            memcpy(val_buf + item_idx * sizeof(int), &val, sizeof(int));
+            Value new_value(CHUNK_SIZE, val_buf);
+            kv_->put(*chunk_key, new_value);
+
+            delete v;
         }
 
         char get_type_() {
@@ -388,63 +425,50 @@ class IntColumn : public Column {
  */
 class DoubleColumn : public Column {
     public:
-        double** data_;
+        DoubleColumn(String* col_name, KVStore* kv) : Column(col_name, kv) { }
 
-        DoubleColumn() : Column() {
-            data_ = new double*[big_cap_];
-            data_[0] = new double[small_cap_];
-        }
-
-        DoubleColumn(int n, ...) : Column() {
-            data_ = new double*[big_cap_];
-            data_[0] = new double[small_cap_];
-            
+        DoubleColumn(String* col_name, KVStore* kv, int n, ...) : Column(col_name, kv) {
             va_list arguments;
             va_start (arguments, n);
 
             for (int i = 0; i < n; i++ ) {
-                double f = va_arg( arguments, double);
+                double f = va_arg(arguments, double);
                 push_back(f);
             }
             va_end(arguments);
         }
 
-        ~DoubleColumn() {
-            for (size_t i = 0; i <= big_len_; i++) {
-                delete[] data_[i];
-            }
-            delete[] data_;
-        }
+        ~DoubleColumn() { }
 
         void check_and_reallocate_() {
-            // if small array is full, move to next small array and start from 0
-            if (small_len_ >= small_cap_) {
-                small_len_ = 0;
+            // when the latest chunk is full
+            if (len_ % CHUNK_SIZE == 0) {
+                size_t chunk_idx = len_ / CHUNK_SIZE;
 
-                // if the big array is full, reallocate and copy over pointers to small arrays
-                if (big_len_ + 1 >= big_cap_) {     
-                    big_cap_ *= 2;
-                    double** temp = new double*[big_cap_];
-                    for (size_t i = 0; i <= big_len_; i++) {
-                        temp[i] = data_[i];
-                    } 
-                    delete[] data_;
-                    data_ = temp;
-                } 
+                char* new_chunk_key = generate_chunk_name(chunk_idx);
 
-                big_len_++;
-                // initialize the next small array
-                data_[big_len_] = new double[small_cap_];
-            }   
+                Key* k = new Key(0, new_chunk_key);
+                Value* v = new Value(CHUNK_SIZE);
+                kv_->put(*k, *v);
+
+                chunk_keys_->push_back(k);
+            }
         }
         
         // gets the double at the index idx
         // if idx is out of bounds, exit
         double get(size_t idx) {
             abort_if_not(idx < size(), "DoubleColumn.get(): index out of bounds");
-            size_t big_idx = idx / small_cap_;
-            size_t small_idx = idx % small_cap_;
-            return data_[big_idx][small_idx];
+            size_t chunk_idx = idx / CHUNK_SIZE;
+            size_t item_idx = idx % CHUNK_SIZE;
+            Key* chunk_key = chunk_keys_->get(chunk_idx);
+
+            Value* val = kv_->get(*chunk_key);
+            char* v = val->get();
+            int rv = 0;
+            memcpy(&rv, v + item_idx * sizeof(double), sizeof(double));
+            delete val;
+            return rv;
         }
 
         DoubleColumn* as_double() {
@@ -453,16 +477,34 @@ class DoubleColumn : public Column {
 
         virtual void push_back(double val) {
             check_and_reallocate_();
-            data_[big_len_][small_len_] = val;
-            small_len_++;
+            size_t chunk_idx = len_ / CHUNK_SIZE;
+            size_t item_idx = len_ % CHUNK_SIZE;
+            Key* chunk_key = chunk_keys_->get(chunk_idx);
+
+            Value* value = kv_->get(*chunk_key);
+            char* v = value->get();
+            memcpy(v + item_idx * sizeof(double), &val, sizeof(double));
+            Value new_value(CHUNK_SIZE, v);
+            kv_->put(*chunk_key, new_value);
+
+            len_++;
+            delete value;
         }
 
         /** Set value at idx. An out of bound idx is undefined.  */
         void set(size_t idx, double val) {
-            size_t big_idx = idx / small_cap_;
-            size_t small_idx = idx % small_cap_;
-            abort_if_not(idx < size(), "DoubleColumn.set(): index out of bounds");
-            data_[big_idx][small_idx] = val;
+            abort_if_not(idx < size(), "DoubleColumne.set(): Index out of bounds");
+            size_t chunk_idx = idx / CHUNK_SIZE;
+            size_t item_idx = idx % CHUNK_SIZE;
+            Key* chunk_key = chunk_keys_->get(chunk_idx);
+
+            Value* v = kv_->get(*chunk_key);
+            char* val_buf = v->get();
+            memcpy(val_buf + item_idx * sizeof(double), &val, sizeof(double));
+            Value new_value(CHUNK_SIZE, val_buf);
+            kv_->put(*chunk_key, new_value);
+
+            delete v;
         }
 
         char get_type_() {
@@ -477,17 +519,9 @@ class DoubleColumn : public Column {
  */
 class StringColumn : public Column {
     public:
-        String*** data_;
+        StringColumn(String* col_name, KVStore* kv) : Column(col_name, kv) { }
 
-        StringColumn() : Column() {
-            data_ = new String**[big_cap_];
-            data_[0] = new String*[small_cap_];     
-        }
-
-        StringColumn(int n, ...) : Column() {
-            data_ = new String**[big_cap_];
-            data_[0] = new String*[small_cap_]; 
-
+        StringColumn(String* col_name, KVStore* kv, int n, ...) : Column(col_name,kv) {
             va_list arguments;
             va_start (arguments, n);
 
@@ -500,14 +534,8 @@ class StringColumn : public Column {
         ~StringColumn() {
             // delete all strings
             for (size_t i = 0; i < size(); i++) {
-                delete get(i);
+                delete get(i);  // todo?
             }
-            // delete chunks
-            for (size_t i = 0; i <= big_len_; i++) {
-                delete[] data_[i];
-            }
-            // delete array of chunks
-            delete[] data_;
         }
 
         StringColumn* as_string() {
@@ -515,57 +543,87 @@ class StringColumn : public Column {
         }
 
         void check_and_reallocate_() {
-            // if small array is full, move to next small array and start from 0
-            if (small_len_ >= small_cap_) {
-                small_len_ = 0;
+            // when the latest chunk is full
+            if (len_ % CHUNK_SIZE == 0) {
+                size_t chunk_idx = len_ / CHUNK_SIZE;
 
-                // if the big array is full, reallocate and copy over pointers to small arrays
-                if (big_len_ + 1 >= big_cap_) {     
-                    big_cap_ *= 2;
-                    String*** temp = new String**[big_cap_];
-                    for (size_t i = 0; i <= big_len_; i++) {
-                        temp[i] = data_[i];
-                    } 
-                    delete[] data_;
-                    data_ = temp;
-                } 
+                char* new_chunk_key = generate_chunk_name(chunk_idx);
 
-                big_len_++;
-                // initialize the next small array
-                data_[big_len_] = new String*[small_cap_];
-            }   
+                Key* k = new Key(0, new_chunk_key);
+                Value* v = new Value(1);
+                kv_->put(*k, *v);
+
+                chunk_keys_->push_back(k);
+            }
         }
-
-        /** Returns the string at idx; undefined on invalid idx.*/
+        
+        // gets the String at the index idx
+        // if idx is out of bounds, exit
         String* get(size_t idx) {
             abort_if_not(idx < size(), "StringColumn.get(): index out of bounds");
-            size_t big_idx = idx / small_cap_;
-            size_t small_idx = idx % small_cap_;
-            return data_[big_idx][small_idx];
+            size_t chunk_idx = idx / CHUNK_SIZE;
+            size_t item_idx = idx % CHUNK_SIZE;
+            Key* chunk_key = chunk_keys_->get(chunk_idx);
+
+            Value* v = kv_->get(*chunk_key);
+            char* val_buf = v->get();
+
+            for (size_t i = 0; i < item_idx; i++) {
+                val_buf += (strlen(val_buf) + 1);
+            }
+
+            delete v;
+            return new String(val_buf);
         }
                 
         virtual void push_back(String* val) {
+            abort_if_not(val != nullptr, "StringColumn.push_back(): val is nullptr");
             check_and_reallocate_();
-            if (val == nullptr) {
-                data_[big_len_][small_len_++] = nullptr;
-            } else {
-                data_[big_len_][small_len_++] = new String(*val);
-            }
+
+            size_t chunk_idx = len_ / CHUNK_SIZE;
+            size_t item_idx = len_ % CHUNK_SIZE;
+            Key* chunk_key = chunk_keys_->get(chunk_idx);
+
+            Value* v = kv_->get(*chunk_key);
+            Value new_value(v->size() + val->size() + 1);
+            char* val_buf = new_value.get();
+            memcpy(val_buf, v->get(), v->size());
+            memcpy(val_buf + v->size(), val->c_str(), val->size() + 1);
+            kv_->put(*chunk_key, new_value);
+            delete v;
         }
 
         /** Out of bound idx is undefined. */
         void set(size_t idx, String* val) {
-            size_t big_idx = idx / small_cap_;
-            size_t small_idx = idx % small_cap_;
-            abort_if_not(idx < size(), "StringColumn.get(): index out of bounds");
-            if (data_[big_idx][small_idx] != nullptr) {
-                delete data_[big_idx][small_idx];
+            abort_if_not(idx < size(), "StringColumn.set(): index out of bounds");
+            abort_if_not(val != nullptr, "StringColumn.set(): val is nullptr");
+
+            size_t chunk_idx = idx / CHUNK_SIZE;
+            size_t item_idx = idx % CHUNK_SIZE;
+            Key* chunk_key = chunk_keys_->get(chunk_idx);
+
+            Value* v = kv_->get(*chunk_key);
+            char* val_buf = v->get();
+            
+            size_t byte_count = 0;
+            for (size_t i = 0; i < item_idx; i++) {
+                byte_count += (strlen(val_buf) + 1);
+                val_buf += (strlen(val_buf) + 1);
             }
-            if (val == nullptr) {
-                data_[big_idx][small_idx] = nullptr;
-            } else {
-                data_[big_idx][small_idx] = new String(*val);
-            }
+
+            // size of string being added + size of all strings - size of replaced string
+            Value new_value(val->size() + v->size() - strlen(val_buf));
+            char* new_buf = new_value.get();
+            
+            memcpy(new_buf, v->get(), byte_count);
+            new_buf += byte_count;
+            memcpy(new_buf, val->c_str(), val->size() + 1);
+            new_buf += (val->size() + 1);
+            memcpy(new_buf, val_buf + strlen(val_buf) + 1, v->size() - byte_count - strlen(val_buf) - 1);
+
+            kv_->put(*chunk_key, new_value);
+
+            delete v;
         }
 
         char get_type_() {

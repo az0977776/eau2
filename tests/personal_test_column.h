@@ -4,6 +4,7 @@
 
 #include "../src/string.h"  
 #include "../src/column.h"
+#include "../src/keyvaluestore.h"
 
 #include "personal_test_macros.h"
 
@@ -15,14 +16,20 @@
  * Int column can push int on, and get them back. Also checks size and set.
  */
 void test_int_column() {
-    IntColumn *ic = new IntColumn();
+    KVStore kvs;
+    String s("column name here");
+    IntColumn *ic = new IntColumn(&s, &kvs);
     ASSERT_EQ(ic->size(), 0);
 
     size_t num_elements = 50000;
 
+    printf("pushing back now\n");
     for (int i = 0 ; i < num_elements; i++) {
       ic->push_back(i);
+      printf("%d\n", i);
     }
+
+    printf("DID WE FINISH PUSING ALL INT VALUES\n");
 
     ASSERT_EQ(ic->size(), num_elements);
     ASSERT_EQ(ic->get(4999), 4999);
@@ -42,7 +49,9 @@ TEST(testColumn, testIntCol) {
  * Checks that a constructor with multiple inputs is possible.
  */
 void test_int_constructor() {
-    IntColumn ic(5, -1024, 0, 1042, 33, -1);
+    KVStore kvs;
+    String s("column name here");
+    IntColumn ic(&s, &kvs, 5, -1024, 0, 1042, 33, -1);
 
     ASSERT_EQ(ic.size(), 5);
     ASSERT_EQ(ic.get(0), -1024);
@@ -67,7 +76,9 @@ TEST(testColumn, testIntColumnConstructor) {
  * The correct type is returned, 'I'
  */
 void test_int_get_type() {
-    IntColumn ic(5, -1024, 0, 1042, 33, -1);
+    KVStore kvs;
+    String s("column name here");
+    IntColumn ic(&s, &kvs, 5, -1024, 0, 1042, 33, -1);
 
     EXPECT_EQ(ic.get_type(), 'I');
 }
@@ -80,7 +91,9 @@ TEST(testColumn, testIntColumnGetType) {
  * This is specific to our implemention. 
  */
 void test_int_column_as_bool() {
-    IntColumn *ic = new IntColumn();
+    KVStore kvs;
+    String s("column name here");
+    IntColumn *ic = new IntColumn(&s, &kvs);
     ic->as_bool();
     delete ic;
     exit(0);
@@ -91,7 +104,9 @@ TEST(testColumn, testIntColExitOnFailAsBool) {
 }
 
 void test_int_column_as_double() {
-    IntColumn *ic = new IntColumn();
+    KVStore kvs;
+    String s("column name here");
+    IntColumn *ic = new IntColumn(&s, &kvs);
     ic->as_double();
     delete ic;
     exit(0);
@@ -102,7 +117,9 @@ TEST(testColumn, testIntColExitOnFailAsDouble) {
 }
 
 void test_int_column_as_string() {
-    IntColumn *ic = new IntColumn();
+    KVStore kvs;
+    String s("column name here");
+    IntColumn *ic = new IntColumn(&s, &kvs);
     ic->as_string();
     delete ic;
     exit(0);
@@ -118,7 +135,9 @@ TEST(testColumn, testIntColExitOnFailAsString) {
  * Doublecolumn can push double on, and get them back. Also checks size and set.
  */
 void test_double_column() {
-    DoubleColumn *dc = new DoubleColumn();
+    KVStore kvs;
+    String s("column name here");
+    DoubleColumn *dc = new DoubleColumn(&s, &kvs);
     ASSERT_EQ(dc->size(), 0);
 
     for (int i = 0 ; i < 5000; i++) {
@@ -142,8 +161,11 @@ TEST(testColumn, testDoubleCol) {
  * DoubleColumn returns the correct type.
  */
 void test_double_column_type() {
-    DoubleColumn *dc = new DoubleColumn();
-    Column *c = new DoubleColumn();
+    KVStore kvs;
+    String s("column name here");
+    String s2("column name 2");
+    DoubleColumn *dc = new DoubleColumn(&s, &kvs);
+    Column *c = new DoubleColumn(&s2, &kvs);
 
     EXPECT_EQ(dc->get_type(), 'D');
     EXPECT_EQ(c->get_type(), 'D');
@@ -160,7 +182,9 @@ TEST(testColumn, testDoubleColType) {
  * DoubleColumn can be created with a variable number of arguments
  */
 void test_double_column_var_args() {
-    DoubleColumn *dc = new DoubleColumn(6, -1234.5, 1.2, 0.0, 1.0, 0.00012345, 0.4553);
+    KVStore kvs;
+    String s("column name here");
+    DoubleColumn *dc = new DoubleColumn(&s, &kvs, 6, -1234.5, 1.2, 0.0, 1.0, 0.00012345, 0.4553);
 
     EXPECT_EQ(dc->get_type(), 'D');
     EXPECT_EQ(dc->size(), 6);
@@ -188,7 +212,9 @@ TEST(testColumn, testDoubleColVarArgsConstructor) {
  * StringColumn can push double on, and get them back. Also checks size and set.
  */
 void test_string_column() {
-    StringColumn *ic = new StringColumn();
+    KVStore kvs;
+    String s("column name here");
+    StringColumn *ic = new StringColumn(&s, &kvs);
     ASSERT_EQ(ic->size(), 0);
 
     String *a = new String("123");
@@ -217,8 +243,11 @@ TEST(testColumn, testStringCol) {
  * StringColumn returns the correct type.
  */
 void test_string_column_type() {
-    StringColumn *sc = new StringColumn();
-    Column *c = new StringColumn();
+    KVStore kvs;
+    String s("column name here");
+    String s2("foobar");
+    StringColumn *sc = new StringColumn(&s, &kvs);
+    Column *c = new StringColumn(&s2, &kvs);
 
     EXPECT_EQ(sc->get_type(), 'S');
     EXPECT_EQ(c->get_type(), 'S');
@@ -235,11 +264,13 @@ TEST(testColumn, testStringColType) {
  * StringColumn can be created with a variable number of arguments
  */
 void test_string_column_var_args() {
+    KVStore kvs;
+    String col_name("column name here");
     String s1("1");
     String s2("2");
     String s3("3");
     String s4("4");
-    StringColumn *sc = new StringColumn(4, &s1, &s2, &s3, nullptr);
+    StringColumn *sc = new StringColumn(&col_name, &kvs, 4, &s1, &s2, &s3, nullptr);
 
     EXPECT_EQ(sc->get_type(), 'S');
     EXPECT_EQ(sc->size(), 4);
@@ -266,7 +297,9 @@ TEST(testColumn, testStringColVarArgsConstructor) {
  * BoolColumn can push double on, and get them back. Also checks size and set.
  */
 void test_bool_column() {
-    BoolColumn *ic = new BoolColumn();
+    KVStore kvs;
+    String s("column name here");
+    BoolColumn *ic = new BoolColumn(&s, &kvs);
     ASSERT_EQ(ic->size(), 0);
 
     for (int i = 0 ; i < 5000; i++) {
@@ -307,8 +340,11 @@ TEST(testColumn, testBoolCol) {
  * BoolColumn returns the correct type.
  */
 void test_bool_column_type() {
-    BoolColumn *bc = new BoolColumn();
-    Column *c = new BoolColumn();
+    KVStore kvs;
+    String s("column name here");
+    String s2("column 2 name");
+    BoolColumn *bc = new BoolColumn(&s, &kvs);
+    Column *c = new BoolColumn(&s2, &kvs);
 
     EXPECT_EQ(bc->get_type(), BOOL);
     EXPECT_EQ(c->get_type(), BOOL);
@@ -325,7 +361,9 @@ TEST(testColumn, testBoolColType) {
  * BoolColumn can be created with a variable number of arguments
  */
 void test_bool_column_var_args() {
-    BoolColumn *bc = new BoolColumn(6, true, true, true, false, true, false);
+    KVStore kvs;
+    String s("column name here");
+    BoolColumn *bc = new BoolColumn(&s, &kvs, 6, true, true, true, false, true, false);
 
     EXPECT_EQ(bc->get_type(), BOOL);
     EXPECT_EQ(bc->size(), 6);
@@ -352,7 +390,9 @@ TEST(testColumn, testBoolColVarArgsConstructor) {
  * unspecified behavior.
  */
 void test_bool_column_as_int() {
-    BoolColumn *bc = new BoolColumn();
+    KVStore kvs;
+    String s("column name here");
+    BoolColumn *bc = new BoolColumn(&s, &kvs);
     bc->as_int();
     delete bc;
     exit(0);
@@ -363,7 +403,9 @@ TEST(testColumn, testBoolColExitOnFailAsBool) {
 }
 
 void test_bool_column_as_double() {
-    BoolColumn *bc = new BoolColumn();
+    KVStore kvs;
+    String s("column name here");
+    BoolColumn *bc = new BoolColumn(&s, &kvs);
     bc->as_double();
     delete bc;
     exit(0);
@@ -374,7 +416,9 @@ TEST(testColumn, testBoolColExitOnFailAsDouble) {
 }
 
 void test_bool_column_as_string() {
-    BoolColumn *bc = new BoolColumn();
+    KVStore kvs;
+    String s("column name here");
+    BoolColumn *bc = new BoolColumn(&s, &kvs);
     bc->as_string();
     delete bc;
     exit(0);

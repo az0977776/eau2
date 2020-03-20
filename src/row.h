@@ -1,4 +1,4 @@
-//lang:CwC
+//lang:Cpp
 #pragma once
 
 #include <stdlib.h>
@@ -7,7 +7,6 @@
 #include "string.h"
 #include "schema.h"
 #include "helper.h"
-#include "column.h"
 
 /*****************************************************************************
  * Fielder::
@@ -30,6 +29,146 @@ class Fielder : public Object {
         /** Called when all fields have been seen. */
         virtual void done() {}
 };
+
+class BoolBox;
+class IntBox;
+class DoubleBox;
+class StringBox;
+
+// for holding values of different types inside a Row class
+class Box : public Object {
+    public:
+        bool has_been_set_;
+        Box() { 
+            has_been_set_ = false;
+        }
+
+        ~Box() {}
+
+        virtual void set(bool val) {
+            abort_if_not(false, "Box.set(bool) Box not implemented");
+        }
+
+        virtual void set(int val) {
+            abort_if_not(false, "Box.set(int) Box not implemented");
+        }
+
+        virtual void set(double val) {
+            abort_if_not(false, "Box.set(double) Box not implemented");
+        }
+
+        virtual void set(String* val) {
+            abort_if_not(false, "Box.set(String*) Box not implemented");
+        }
+        
+        virtual BoolBox* as_bool() {
+            abort_if_not(false, "Box is not a boolean");
+        }
+
+        virtual IntBox* as_int() {
+            abort_if_not(false, "Box is not a int");
+        }
+
+        virtual DoubleBox* as_double() {
+            abort_if_not(false, "Box is not a double");
+        }
+
+        virtual StringBox* as_string() {
+            abort_if_not(false, "Box is not a String");
+        }
+};
+
+class BoolBox: public Box {
+    public:
+        bool val_;
+
+        BoolBox() : Box() {}
+
+        ~BoolBox() {}
+
+        BoolBox* as_bool() {
+            return dynamic_cast<BoolBox*>(this);
+        }
+    
+        void set(bool b) {
+            has_been_set_ = true;
+            val_ = b;
+        }
+        
+        bool get() {
+            abort_if_not(has_been_set_, "BoolBox.get(): has not been set yet");
+            return val_;
+        }
+};
+
+class IntBox: public Box {
+    public:
+        int val_;
+
+        IntBox() : Box() {}
+
+        ~IntBox() {}
+
+        IntBox* as_int() {
+            return dynamic_cast<IntBox*>(this);
+        }
+    
+        void set(int b) {
+            has_been_set_ = true;
+            val_ = b;
+        }
+        
+        int get() {
+            abort_if_not(has_been_set_, "IntBox.get(): has not been set yet");
+            return val_;
+        }
+};
+
+class DoubleBox: public Box {
+    public:
+        double val_;
+
+        DoubleBox() : Box(){}
+
+        ~DoubleBox() {}
+
+        DoubleBox* as_double() {
+            return dynamic_cast<DoubleBox*>(this);
+        }
+    
+        void set(double b) {
+            has_been_set_ = true;
+            val_ = b;
+        }
+        
+        double get() {
+            abort_if_not(has_been_set_, "DoubleBox.get(): has not been set yet");
+            return val_;
+        }
+};
+
+class StringBox: public Box {
+    public:
+        String* val_;
+
+        StringBox() : Box() {}
+
+        ~StringBox() { }
+
+        StringBox* as_string() {
+            return dynamic_cast<StringBox*>(this);
+        }
+    
+        void set(String* b) {
+            has_been_set_ = true;
+            val_ = b;
+        }
+        
+        String* get() {
+            abort_if_not(has_been_set_, "StringBox.get(): has not been set yet");
+            return val_;
+        }
+};
  
 /*************************************************************************
  * Row::
@@ -43,27 +182,27 @@ class Row : public Object {
     public:
         Schema s_;
         size_t row_idx_;
-        Column** data_;
+        Box** data_;
         
         /** Build a row following a schema. */
         Row(Schema& scm) : s_(scm) {
             row_idx_ = -1;
 
             // adds columns based on the type inside of the schema
-            data_ = new Column*[s_.width()];
+            data_ = new Box*[s_.width()];
             for (size_t i = 0; i < s_.width(); i++) {
                 switch (s_.col_type(i)) {
                     case BOOL:
-                        data_[i] = new BoolColumn();
+                        data_[i] = new BoolBox();
                         break;                   
                     case INT:
-                        data_[i] = new IntColumn();
+                        data_[i] = new IntBox();
                         break;
                     case DOUBLE:
-                        data_[i] = new DoubleColumn();
+                        data_[i] = new DoubleBox();
                         break;
                     case STRING:
-                        data_[i] = new StringColumn();
+                        data_[i] = new StringBox();
                         break;                
                     default:
                         abort_if_not(false, "Row(Schema): bad schema");
@@ -86,43 +225,26 @@ class Row : public Object {
             * */
         void set(size_t col, int val) {
             abort_if_not(col < width(), "Row.set(int) out of bounds");
-            IntColumn* ic = data_[col]->as_int();
-            if (ic->size() == 0) {
-                ic->push_back(val);
-            } else {
-                ic->set(0, val);
-            }
+            IntBox* ic = data_[col]->as_int();
+            ic->set(val);
         }
 
         void set(size_t col, double val) {
             abort_if_not(col < width(), "Row.set(double) out of bounds");
-            DoubleColumn* fc = data_[col]->as_double();
-            if (fc->size() == 0) {
-                fc->push_back(val);
-            } else {
-                fc->set(0, val);
-            }
+            DoubleBox* fc = data_[col]->as_double();
+            fc->set(val);
         }
 
         void set(size_t col, bool val) {
             abort_if_not(col < width(), "Row.set(bool) out of bounds");
-            BoolColumn* bc = data_[col]->as_bool();
-            if (bc->size() == 0) {
-                bc->push_back(val);
-            } else {
-                bc->set(0, val);
-            }
-            
+            BoolBox* bc = data_[col]->as_bool();
+            bc->set(val);
         }
 
         void set(size_t col, String* val) {
             abort_if_not(col < width(), "Row.set(String*) out of bounds");
-            StringColumn* sc = data_[col]->as_string();
-            if (sc->size() == 0) {
-                sc->push_back(val);
-            } else {
-                sc->set(0, val);
-            }
+            StringBox* sc = data_[col]->as_string();
+            sc->set(val);
         }
         
         /** Set/get the index of this row (ie. its position in the dataframe. This is
@@ -142,23 +264,23 @@ class Row : public Object {
             * */
         int get_int(size_t col) {
             abort_if_not(col < width(), "Row.get_int(): out of bounds");
-            IntColumn *temp = data_[col]->as_int();
-            return temp->get(0);
+            IntBox *temp = data_[col]->as_int();
+            return temp->get();
         }
         bool get_bool(size_t col) {
             abort_if_not(col < width(), "Row.get_bool(): out of bounds");
-            BoolColumn *temp = data_[col]->as_bool();
-            return temp->get(0);
+            BoolBox *temp = data_[col]->as_bool();
+            return temp->get();
         }
         double get_double(size_t col) {
             abort_if_not(col < width(), "Row.get_double(): out of bounds");
-            DoubleColumn *temp = data_[col]->as_double();
-            return temp->get(0);
+            DoubleBox *temp = data_[col]->as_double();
+            return temp->get();
         }
         String* get_string(size_t col) {
             abort_if_not(col < width(), "Row.get_string(): out of bounds");
-            StringColumn *temp = data_[col]->as_string();
-            return temp->get(0);
+            StringBox *temp = data_[col]->as_string();
+            return temp->get();
         }
         
         /** Number of fields in the row. */
@@ -179,16 +301,16 @@ class Row : public Object {
             for (size_t i = 0; i < width(); i++) {
                 switch (s_.col_type(i)) {
                     case BOOL:
-                        f.accept(data_[i]->as_bool()->get(0));
+                        f.accept(data_[i]->as_bool()->get());
                         break;                   
                     case INT:
-                        f.accept(data_[i]->as_int()->get(0));
+                        f.accept(data_[i]->as_int()->get());
                         break;
                     case DOUBLE:
-                        f.accept(data_[i]->as_double()->get(0));
+                        f.accept(data_[i]->as_double()->get());
                         break;
                     case STRING:
-                        f.accept(data_[i]->as_string()->get(0));
+                        f.accept(data_[i]->as_string()->get());
                         break;                
                     default:
                         abort_if_not(false, "Row.visit(): bad schema");
