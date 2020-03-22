@@ -18,6 +18,10 @@ class Key : public Object {
         ~Key() {
             delete key_;
         }
+
+        String* get_name() {
+            return key_->clone();
+        }
         
         bool equals(Object* other) {
             Key* k = dynamic_cast<Key*>(other);
@@ -37,6 +41,34 @@ class Key : public Object {
 
         void print() {
             pln(key_->c_str());
+        }
+
+        size_t serial_buf_size() {
+            return sizeof(size_t) + key_->size() + 1;
+        }
+
+        char* serialize(char* buf) {
+            memcpy(buf, &node_index_, sizeof(size_t));
+            memcpy(buf + sizeof(size_t), key_->c_str(), key_->size() + 1); 
+            return buf;
+        }
+
+        char* serialize() {
+            char* buf = new char[serial_buf_size()];
+            return serialize(buf);
+        }
+
+        static Key* deserialize(const char* buf) {
+            size_t node_index = 0;
+            memcpy(&node_index, buf, sizeof(size_t));
+
+            size_t name_len = strlen(buf + sizeof(size_t)) + 1;
+            char* name = new char[name_len];
+            memcpy(name, buf + sizeof(size_t), name_len); 
+
+            Key* ret = new Key(node_index, name);
+            delete name;
+            return ret;
         }
 };
 

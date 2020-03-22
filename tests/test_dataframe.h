@@ -8,7 +8,7 @@
 #include "../src/column.h"
 #include "../src/row.h"
 
-#include "personal_test_macros.h"
+#include "test_macros.h"
 
 
 /**************************** Test DataFrame ***************************/
@@ -16,15 +16,15 @@
 /**
  * A function to creat a DataFrame with default values.
  */
-DataFrame* build_data_frame(int size, String& str) {
+DataFrame* build_data_frame(int size, String& str, Key& key, KVStore& kvs) {
     Schema schema("BIDS");
 
-    DataFrame* df = new DataFrame(schema);
+    DataFrame* df = new DataFrame(schema, key, &kvs);
     Row r(df->get_schema());
 
     double d = 0.1;
 
-    for(int i = 0; i < size - 1; i++) {
+    for(int i = 0; i < size; i++) {
         d = (i * 1.0) / (1.0 * size);
         r.set(0, i % 2 == 0);
         r.set(1, i);
@@ -32,14 +32,6 @@ DataFrame* build_data_frame(int size, String& str) {
         r.set(3, &str);
         df->add_row(r);
     }
-
-    // add a nullptr for string
-    d = ((1.0 * size) - 1.0) / (1.0 * size);
-    r.set(0, (size - 1) % 2 == 0);
-    r.set(1, size - 1);
-    r.set(2, d);
-    r.set(3, nullptr);
-    df->add_row(r);
 
     return df;
 }
@@ -50,11 +42,14 @@ DataFrame* build_data_frame(int size, String& str) {
  * as unspecified by the API.
  */
 void test_dataframe_constructor_by_schema() {
+    Key key(0, "Some_key");
+    Key key2(0, "Other_key");
+    KVStore kvs;
     Schema schema1("IDSBB");
     Schema schema2("I");
 
-    DataFrame df1(schema1);
-    DataFrame df2(schema2);
+    DataFrame df1(schema1, key, &kvs);
+    DataFrame df2(schema2, key2, &kvs);
 
     ASSERT_EQ(df1.ncols(), 5);
     ASSERT_EQ(df1.nrows(), 0);
@@ -84,9 +79,12 @@ TEST(testDataFrame, testDataFrameConstructorSchema) {
  *      Choose to exit with code -1.
  */
 void test_dataframe_copy_constructor() {
+    Key key(0, "Some_key");
+    KVStore kvs;
+    Key key_copy(0, "key_copy");
     int size = 10;
     String str("apple");
-    DataFrame* df = build_data_frame(size, str);
+    DataFrame* df = build_data_frame(size, str, key, kvs);
 
     ASSERT_EQ(df->ncols(), 4);
     ASSERT_EQ(df->nrows(), size);
@@ -95,10 +93,10 @@ void test_dataframe_copy_constructor() {
     EXPECT_EQ(df->get_schema().col_type(1), 'I');
     EXPECT_EQ(df->get_schema().col_type(2), 'D');
     EXPECT_EQ(df->get_schema().col_type(3), 'S');
-
+    
     EXPECT_EQ(df->get_int(1, 4), 4);
 
-    DataFrame df_copy(*df);
+    DataFrame df_copy(*df, key_copy);
 
     ASSERT_EQ(df_copy.ncols(), df->ncols());
     ASSERT_EQ(df_copy.nrows(), 0);
@@ -122,12 +120,14 @@ TEST(testDataFrame, testDataFrameCopyConstructor) {
  * Does the dataframe return the correct schema, even after adding columns.
  */
 void test_dataframe_get_schema() {
+    Key key(0, "Some_key");
+    KVStore kvs;
     Schema schema("IBDS");
     String col_name("column name");
 
     schema.add_column('I');
 
-    DataFrame df(schema);
+    DataFrame df(schema, key, &kvs);
 
     EXPECT_TRUE(df.get_schema().equals(&schema));
 
@@ -145,16 +145,19 @@ TEST(testDataFrame, testDataFrameGetSchema) {
  * NOTE: does not copy the givne columns
  */
 void test_dataframe_add_column() {
+    Key key(0, "Some_key");
+    KVStore kvs;
+
+    String col_name1("col_name_1");
+    String col_name2("col_name_2");
+    String col_name3("col_name_3");
+
     Schema schema("");
-    DataFrame df(schema);
+    DataFrame df(schema, key, &kvs);
 
-    IntColumn ic1(5, 123, 456, 789, 1000, 2000);
-    BoolColumn bc(5, true, true, false, true, false);
-    IntColumn ic2(5, 5000, 3000, 1000, 59, -1);
-
-    String ic1_name("first int");
-    String bc_name("bool column");
-    String ic2_name("second int");
+    IntColumn ic1(&col_name1, &kvs, 5, 123, 456, 789, 1000, 2000);
+    BoolColumn bc(&col_name2, &kvs, 5, true, true, false, true, false);
+    IntColumn ic2(&col_name3, &kvs, 5, 5000, 3000, 1000, 59, -1);
 
     df.add_column(&ic1);
     df.add_column(&bc);
@@ -187,9 +190,11 @@ TEST(testDataFrame, testDataFrameAddColumn) {
  * Does DataFrame get the correct values.
  */
 void test_dataframe_get_values() {
+    Key key(0, "Some_key");
+    KVStore kvs;
     int size = 10;
     String s("apple");
-    DataFrame* df = build_data_frame(size, s);
+    DataFrame* df = build_data_frame(size, s, key, kvs);
 
     ASSERT_EQ(df->ncols(), 4);
     ASSERT_EQ(df->nrows(), size);
@@ -209,7 +214,6 @@ void test_dataframe_get_values() {
     EXPECT_FLOAT_EQ(df->get_double(2, 2), 2.0 / (1.0 * size));
     
     EXPECT_TRUE(df->get_string(3, 1)->equals(&s));
-    EXPECT_EQ(df->get_string(3, size - 1), nullptr);
 
     delete df;
 }
@@ -222,10 +226,12 @@ TEST(testDataFrame, testDataFrameGet) {
  * Does DataFrame set the correct values.
  */
 void test_dataframe_set_values() {
+    Key key(0, "Some_key");
+    KVStore kvs;
     int size = 10;
     String s("apple");
     String s2("orange");
-    DataFrame* df = build_data_frame(size, s);
+    DataFrame* df = build_data_frame(size, s, key, kvs);
 
     ASSERT_EQ(df->ncols(), 4);
     ASSERT_EQ(df->nrows(), size);
@@ -259,10 +265,7 @@ void test_dataframe_set_values() {
     EXPECT_FLOAT_EQ(df->get_double(2, 2), f2);
     
     EXPECT_TRUE(df->get_string(3, 1)->equals(&s));
-    EXPECT_EQ(df->get_string(3, size - 1), nullptr);
-    df->set(3, 1, nullptr);
     df->set(3, size - 1, &s2);
-    EXPECT_EQ(df->get_string(3, 1), nullptr);
     EXPECT_TRUE(df->get_string(3, size - 1)->equals(&s2));
 
     delete df;
@@ -276,12 +279,17 @@ TEST(testDataFrame, testDataFrameSet) {
  * DataFrame retuns the correct index based on name.
  */
 void test_dataframe_get_col() {
+    Key key(0, "Some_key");
+    KVStore kvs;
     Schema schema("");
-    DataFrame df(schema);
-
-    IntColumn ic1(5, 123, 456, 789, 1000, 2000);
-    BoolColumn bc(5, true, true, false, true, false);
-    IntColumn ic2(5, 5000, 3000, 1000, 59, -1);
+    DataFrame df(schema, key, &kvs);
+    
+    String col1_name("intcol");
+    String col2_name("boolcol");
+    String col3_name("intcol2");
+    IntColumn ic1(&col1_name, &kvs, 5, 123, 456, 789, 1000, 2000);
+    BoolColumn bc(&col2_name, &kvs, 5, true, true, false, true, false);
+    IntColumn ic2(&col3_name, &kvs, 5, 5000, 3000, 1000, 59, -1);
 
     String ic1_name("first int");
     String bc_name("bool column");
@@ -314,9 +322,11 @@ TEST(testDataFrame, testDataFrameGetCol) {
  * DataFrame puts the correct information into the given row.
  */
 void test_dataframe_fill_row() {
+    Key key(0, "Some_key");
+    KVStore kvs;
     int size = 10;
     String s("apple");
-    DataFrame* df = build_data_frame(size, s);
+    DataFrame* df = build_data_frame(size, s, key, kvs);
     Row row(df->get_schema());
 
     ASSERT_EQ(df->ncols(), 4);
@@ -337,7 +347,7 @@ void test_dataframe_fill_row() {
     EXPECT_EQ(row.get_bool(0), df->get_bool(0, 9));
     EXPECT_EQ(row.get_int(1), df->get_int(1, 9));
     EXPECT_FLOAT_EQ(row.get_double(2), df->get_double(2, 9));
-    EXPECT_EQ(row.get_string(3), df->get_string(3, 9));  // check for nullptr 
+    EXPECT_TRUE(row.get_string(3)->equals(df->get_string(3, 9)));
 
     delete df;
 }
@@ -363,12 +373,14 @@ class FilterOddRower : public Rower {
 };
 
 void test_filter() {
+    Key key(0, "Some_key");
+    KVStore kvs;
     // creates a schema and adds a column with a name
     Schema s("IBDS");
     String stri("cow");
     s.add_column('I');
 
-    DataFrame df(s);
+    DataFrame df(s, key, &kvs);
     Row r(df.get_schema());
     String str("apple");
 
@@ -421,9 +433,11 @@ class Taxes : public Rower {
 };
 
 void test_map() {
+    Key key(0, "Some_key");
+    KVStore kvs;
     // Creating a data frame with the right structure 
     Schema scm("IDBII");       // the schema
-    DataFrame df(scm);         // the data frame  
+    DataFrame df(scm, key, &kvs);         // the data frame  
 
     // populdates the DataFrame
     int size = 10;
@@ -461,18 +475,20 @@ TEST(testDataFrame, testDataFrameMap) {
  * NOTE: the captures all stdout durring the test.
  */
 void test_dataframe_print() {
+    Key key(0, "Some_key");
+    KVStore kvs;
     char expected[256] =   "<1><0><0><\"apple with space\">\n" \
                             "<0><1><0.2><\"apple with space\">\n" \
                             "<1><2><0.4><\"apple with space\">\n" \
                             "<0><3><0.6><\"apple with space\">\n" \
-                            "<1><4><0.8><\"\">\n";
+                            "<1><4><0.8><\"apple with space\">\n";
     char buf[256] = {0}; // should be big enough
     freopen("/dev/null", "a", stdout);  // don't print to screen
     setbuf(stdout, buf); // redirect stdout to buffer
 
     int size = 5;
     String s("apple with space");
-    DataFrame* df = build_data_frame(size, s);
+    DataFrame* df = build_data_frame(size, s, key, kvs);
 
     ASSERT_EQ(df->ncols(), 4);
     ASSERT_EQ(df->nrows(), size);
@@ -499,26 +515,36 @@ TEST(testDataFrame, testDataFramePrint) {
  * pointer equality.
  */
 void test_dataframe_equals() {
+    Key key0(0, "Some_key1");
+    Key key1(0, "Some_key2");
+    Key key2(0, "Some_key3");
+    Key key3(0, "Some_key4");
+    Key key4(0, "Some_key5");
+    Key key5(0, "Some_key6");
+    KVStore kvs;
     int size = 5;
     String s1("apple");
     String s2("orange");
-    DataFrame* df = build_data_frame(size, s1);
-    DataFrame* df_shallow_copy = new DataFrame(*df);
-    DataFrame* not_df = build_data_frame(size, s2);
-    DataFrame* not_df2 = build_data_frame(size * 2, s1);
+    DataFrame* df = build_data_frame(size, s1, key1, kvs);
+    DataFrame* df_shallow_copy = new DataFrame(*df, key2);
+    DataFrame* not_df = build_data_frame(size, s2, key3, kvs);
+    DataFrame* not_df2 = build_data_frame(size * 2, s1, key4, kvs);
 
     Schema schema("");
 
-    DataFrame df1(schema);
-    IntColumn ic1(5, 123, 456, 789, 1000, 2000);
-    BoolColumn bc(5, true, true, false, true, false);
-    IntColumn ic2(5, 5000, 3000, 1000, 59, -1);
+    DataFrame df1(schema, key0, &kvs);
+    String col1_name("intcol");
+    String col2_name("boolcol");
+    String col3_name("intcol2");
+    IntColumn ic1(&col1_name, &kvs, 5, 123, 456, 789, 1000, 2000);
+    BoolColumn bc(&col2_name, &kvs, 5, true, true, false, true, false);
+    IntColumn ic2(&col3_name, &kvs, 5, 5000, 3000, 1000, 59, -1);
     
     df1.add_column(&ic1);
     df1.add_column(&bc);
     df1.add_column(&ic2);
 
-    DataFrame df2(schema);
+    DataFrame df2(schema, key5, &kvs);
     df2.add_column(&ic1);
     df2.add_column(&bc);
     df2.add_column(&ic2);

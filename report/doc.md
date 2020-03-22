@@ -154,3 +154,17 @@ What needs to be done:
 - Create a Key/Value Store class
 - Create an application class
 - Create a Distributed DataFrame that can be stored across multiple nodes
+
+
+
+
+
+
+
+
+
+
+
+
+
+// full name to look like "DF_NAME:0x123ADF:0x321FDA"

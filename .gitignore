@@ -6,3 +6,5 @@ tests/CMakeCache.txt
 tests/Makefile
 tests/sorer_test.dSYM/*
 tests/lib/libgtest.a
+.vscode/settings.json
+tests/googletest-src

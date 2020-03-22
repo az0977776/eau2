@@ -121,4 +121,46 @@ class Schema : public Object {
             
             return true;
         }
+
+        size_t serial_buf_size() {
+            return 2 * sizeof(size_t) + types_len_;
+        }
+
+        // <ncols><nrows><schema>
+        char* serialize(char* buf) {
+            char* buf_pointer = buf;
+
+            memcpy(buf_pointer, &types_len_, sizeof(size_t));
+            buf_pointer += sizeof(size_t);
+
+            memcpy(buf_pointer, &num_rows_, sizeof(size_t));
+            buf_pointer += sizeof(size_t);
+
+            memcpy(buf_pointer, types_, types_len_);
+            
+            return buf;
+        }
+
+        // <type><len_><name>
+        char* serialize() {
+            char* buf = new char[serial_buf_size()];
+            return serialize(buf);
+        }
+
+        static Schema* deserialize(const char* buf) {
+            size_t types_len, num_rows;
+            memcpy(&types_len, buf, sizeof(size_t));
+            memcpy(&num_rows, buf + sizeof(size_t), sizeof(size_t));
+
+            char* types = new char[types_len + 1];
+            memcpy(types, buf + 2 * sizeof(size_t), types_len);
+            types[types_len] = '\0';
+
+            Schema* schema = new Schema(types);
+            schema->num_rows_ = num_rows;
+            
+            delete[] types;
+            
+            return schema;
+        }
 };

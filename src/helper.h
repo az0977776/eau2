@@ -55,8 +55,24 @@ class Sys {
       std::cout << "Exit message: " << c << "\n";
       exit(-1);
   }
+
+  static void fail(const char* c) {
+    std::cout << "Fail message: " << c << "\n";
+    exit(-1);
+  }
+
+  static void print_byte(const char* buf, size_t len) {
+      for (size_t i = 0; i < len; i++) {
+          if (buf[i] < 32 || buf[i] > 126) {
+            printf("[0x%02X] ", (unsigned char) buf[i]);
+          } else {
+            printf("[%c] ", buf[i]);
+          }
+      }
+      printf("\n");
+  }
   
-  // Definitely fail
+// Definitely fail
 //  void FAIL() {
   void myfail(){
     pln("Failing");

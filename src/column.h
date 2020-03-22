@@ -142,6 +142,14 @@ class Column : public Object {
             chunk_keys_ = new Vector<Key*>();
         }
 
+        // NOTE: takes ownership of chunk_keys and the keys inside the vector
+        Column(size_t len, Vector<Key*>* chunk_keys, String* col_name, KVStore* kv) {
+            len_ = len;
+            kv_ = kv;
+            col_name_ = col_name->clone();
+            chunk_keys_ = chunk_keys;
+        }
+
         ~Column() {
             delete col_name_;
             for (size_t i = 0; i < len_; i++) {
@@ -152,7 +160,7 @@ class Column : public Object {
 
         char* generate_chunk_name(size_t chunk_idx) {
             size_t col_name_len = col_name_->size();
-            char* ret = new char[col_name_len + 1 + sizeof(size_t)];
+            char* ret = new char[col_name_len + 3 + (sizeof(size_t) * 2)];
             memcpy(ret, col_name_->c_str(), col_name_len);
             ret[col_name_len] = ':';
             sprintf(ret+col_name_len+1, "0x%X", (unsigned int)chunk_idx);
@@ -211,7 +219,40 @@ class Column : public Object {
             return 0;
         }
 
+        size_t serial_buf_size() {
+            size_t ret = 1 + sizeof(size_t) + col_name_->size() + 1; // char for type and size_t for length and the name of column
+            for (size_t i = 0; i < chunk_keys_->size(); i++) {
+                ret += chunk_keys_->get(i)->serial_buf_size();
+            }
+            return ret;
+        }
 
+        // <type><len_><name>[key...] 
+        char* serialize(char* buf) {
+            char* buf_pointer = buf;
+            buf_pointer[0] = get_type();
+            buf_pointer += 1;
+
+            memcpy(buf_pointer, &len_, sizeof(size_t));
+            buf_pointer += sizeof(size_t);
+
+            memcpy(buf_pointer, col_name_->c_str(), col_name_->size() + 1);
+            buf_pointer += col_name_->size() + 1;
+            
+            for (size_t i = 0; i < chunk_keys_->size(); i++) {
+                chunk_keys_->get(i)->serialize(buf_pointer);
+                buf_pointer += chunk_keys_->get(i)->serial_buf_size();
+            }
+            return buf;
+        }
+
+        // <type><len_><name>[key...] 
+        char* serialize() {
+            char* buf = new char[serial_buf_size()];
+            return serialize(buf);
+        }
+
+        static Column* deserialize(const char* buf, KVStore* kvs);
 };
   
 
@@ -231,7 +272,10 @@ class BoolColumn : public Column {
                 push_back(b);
             }
             va_end(arguments);
-        }
+        } 
+        
+        // NOTE: takes ownership of chunk_keys and the keys inside the vector
+        BoolColumn(size_t len, Vector<Key*>* chunk_keys, String* col_name, KVStore* kv) : Column(len, chunk_keys, col_name, kv) { }
 
         ~BoolColumn() { }
 
@@ -262,9 +306,7 @@ class BoolColumn : public Column {
 
             size_t buf = 0;
             memcpy(&buf, v + item_idx * sizeof(size_t), sizeof(size_t));
-            //printf("before: 0x%zX\n", buf);
             size_t bit_idx = len_ % (sizeof(size_t) * 8);
-            //printf("chunk_idx: %zu, item_idx: %zu, bit_idx: %zu\n", chunk_idx, item_idx, bit_idx);
 
             if (val) {
                 buf |= (1 << bit_idx);
@@ -273,7 +315,6 @@ class BoolColumn : public Column {
             }
 
             memcpy(v + item_idx * sizeof(size_t), &buf, sizeof(size_t));
-            //printf("after:  0x%zX\n", buf);
             Value new_value(CHUNK_SIZE, v);
             kv_->put(*chunk_key, new_value);
 
@@ -352,6 +393,9 @@ class IntColumn : public Column {
             }
             va_end(arguments);
         }
+        
+        // NOTE: takes ownership of chunk_keys and the keys inside the vector
+        IntColumn(size_t len, Vector<Key*>* chunk_keys, String* col_name, KVStore* kv) : Column(len, chunk_keys, col_name, kv) { }
 
         ~IntColumn() {
         }
@@ -445,6 +489,9 @@ class DoubleColumn : public Column {
             }
             va_end(arguments);
         }
+        
+        // NOTE: takes ownership of chunk_keys and the keys inside the vector
+        DoubleColumn(size_t len, Vector<Key*>* chunk_keys, String* col_name, KVStore* kv) : Column(len, chunk_keys, col_name, kv) { }
 
         ~DoubleColumn() { }
 
@@ -539,6 +586,9 @@ class StringColumn : public Column {
             }
             va_end(arguments);
         }
+        
+        // NOTE: takes ownership of chunk_keys and the keys inside the vector
+        StringColumn(size_t len, Vector<Key*>* chunk_keys, String* col_name, KVStore* kv) : Column(len, chunk_keys, col_name, kv) { }
 
         ~StringColumn() {
             // delete all strings
@@ -647,3 +697,39 @@ class StringColumn : public Column {
 };
 
 
+Column* Column::deserialize(const char* buf, KVStore* kvs) {
+    char type;
+    size_t len;
+    String* name;
+
+    const char* buf_pointer = buf;
+    memcpy(&type, buf_pointer, 1);
+    buf_pointer += 1;
+    
+    memcpy(&len, buf_pointer, sizeof(size_t));
+    buf_pointer += sizeof(size_t);
+
+    name = new String(buf_pointer);
+    buf_pointer += name->size() + 1;
+
+    Vector<Key*>* keys = new Vector<Key*>();
+
+    for (size_t i = 0; i < (len / CHUNK_SIZE) + 1; i++) {
+        keys->push_back(Key::deserialize(buf_pointer));
+        buf_pointer += keys->get(i)->serial_buf_size();
+    }
+
+    switch (type) {
+        case BOOL:
+            return new BoolColumn(len, keys, name, kvs);
+        case INT:
+            return new IntColumn(len, keys, name, kvs);
+        case DOUBLE:
+            return new DoubleColumn(len, keys, name, kvs);
+        case STRING:
+            return new StringColumn(len, keys, name, kvs);
+        default:
+            Sys::fail("Column:deserialize, invalid type of column");
+            return nullptr;
+    }
+}

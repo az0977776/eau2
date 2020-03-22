@@ -162,29 +162,42 @@ class DataFrameOriginal : public Object {
         size_t cols_len_;
         size_t cols_cap_;
         size_t num_cols_owned_; // this is used to tell which columns we have to delete
+        KVStore* kv_;  // external
+        Key* key_;  // owned
 
         /** Create a data frame with the same columns as the given df but with no rows or rownames */
-        DataFrameOriginal(DataFrameOriginal& df) : schema_() {
+        DataFrameOriginal(DataFrameOriginal& df, Key& key) : schema_() {
             for (size_t i = 0; i < df.ncols(); i++) {
                 schema_.add_column(df.schema_.col_type(i));
             }
+
+            kv_ = df.kv_;
+            key_ = key.clone();
             
             cols_cap_ = schema_.width() < 4 ? 4: schema_.width();
             cols_len_ = schema_.width();
             num_cols_owned_ = schema_.width();
             create_columns_by_schema_();
+
+            add_self_to_kv_();
         }
 
         /** Create a data frame from a schema and columns. All columns are created
         * empty. */
-        DataFrameOriginal(Schema& schema) : schema_(schema) {
+        DataFrameOriginal(Schema& schema, Key& key, KVStore* kv) : schema_(schema) {
             cols_cap_ = schema_.width() < 4 ? 4: schema_.width();
             cols_len_ = schema_.width();
             num_cols_owned_ = schema_.width();
+            key_ = key.clone();
+            kv_ = kv;
+            
             create_columns_by_schema_();
+
+            add_self_to_kv_();
         }
 
         ~DataFrameOriginal() {
+            delete key_;
             // do not own any of the columns in this data frame
             // just release the memory for the array holding the column pointers
             for (size_t i = 0; i < num_cols_owned_; i++) {
@@ -193,22 +206,49 @@ class DataFrameOriginal : public Object {
             delete[] cols_; 
         }
 
+        void add_self_to_kv_() {
+            char* serialized_df = serialize();
+            Value v(serial_buf_size(), serialized_df);
+            kv_->put(*key_, v);
+
+            delete serialized_df; 
+        }
+
+        Key* get_key() {
+            return key_->clone();
+        }
+
+        // full name to look like "DF_NAME:0x123ADF:0x321FDA"
+        char* get_column_name_(size_t col_idx) {
+            String* df_name = key_->get_name();
+            size_t df_name_len = df_name->size();
+            char* ret = new char[df_name_len + 3 + (2 * sizeof(size_t))];
+            memcpy(ret, df_name->c_str(), df_name_len);
+            ret[df_name_len] = ':';
+            sprintf(ret+df_name_len+1, "0x%X", (unsigned int)col_idx);
+
+            delete df_name;
+            return ret;
+        }
+
         // creates columns in DataFrameOriginal based on the Schema's types
         void create_columns_by_schema_() {
+            MutableString str("");
             cols_ = new Column*[cols_cap_];
             for (size_t i = 0; i < cols_len_; i++) {
+                str.set(get_column_name_(i));
                 switch (schema_.col_type(i)) {
                     case BOOL:
-                        cols_[i] = new BoolColumn();
+                        cols_[i] = new BoolColumn(&str, kv_);
                         break;                   
                     case INT:
-                        cols_[i] = new IntColumn();
+                        cols_[i] = new IntColumn(&str, kv_);
                         break;
                     case DOUBLE:
-                        cols_[i] = new DoubleColumn();
+                        cols_[i] = new DoubleColumn(&str, kv_);
                         break;
                     case STRING:
-                        cols_[i] = new StringColumn();
+                        cols_[i] = new StringColumn(&str, kv_);
                         break;                
                     default:
                         abort_if_not(false, "DataFrameOriginal(): bad schema");
@@ -375,6 +415,37 @@ class DataFrameOriginal : public Object {
             }
             return true;
         }
+
+        size_t serial_buf_size() {
+            size_t ret = key_->serial_buf_size() + sizeof(size_t); // key size and size_t for num columns
+            for (size_t i = 0; i < ncols(); i++) {
+                ret += cols_[i]->serial_buf_size();
+            }
+            return ret;
+        }
+
+        // <key><num_cols>[cols...]
+        char* serialize(char* buf) {
+            char* buf_pointer = buf;
+            key_->serialize(buf_pointer);
+            buf_pointer += key_->serial_buf_size();
+
+            memcpy(buf_pointer, &cols_len_, sizeof(size_t));
+            buf_pointer += sizeof(size_t);
+
+            for (size_t i = 0; i < ncols(); i++) {
+                cols_[i]->serialize(buf_pointer);
+                buf_pointer += cols_[i]->serial_buf_size();
+            }
+
+            return buf;
+        }
+
+        // <key><num_cols>[cols...]
+        char* serialize() {
+            char* buf = new char[serial_buf_size()];
+            return serialize(buf);
+        }
 };
 
 // MapThread is a subclass of Thread
@@ -403,22 +474,23 @@ class MapThread : public Thread {
 class DataFrame: public DataFrameOriginal{
     public:
 
-        DataFrame(DataFrame& df) : DataFrameOriginal(df) {
+        DataFrame(DataFrame& df, Key &key) : DataFrameOriginal(df, key) {
 
         }
 
         /** Create a data frame from a schema and columns. All columns are created
         * empty. */
-        DataFrame(Schema& schema) : DataFrameOriginal(schema) {
+        DataFrame(Schema& schema, Key &key, KVStore* kv) : DataFrameOriginal(schema, key, kv) {
 
         }
 
         /** Create a new dataframe, constructed from rows for which the given Rower
         * returned true from its accept method. 
         * The returned DataFrame will lose its row names.
+        * The given key is the name of the returned dataframe.
         * */
-        DataFrame* filter(Rower& r) {
-            DataFrame* df = new DataFrame(*this);
+        DataFrame* filter(Rower& r, Key& key) {
+            DataFrame* df = new DataFrame(*this, key);
             Row row(schema_);
             for (size_t i = 0; i < nrows(); i++) {
                 fill_row(i, row);
@@ -427,6 +499,15 @@ class DataFrame: public DataFrameOriginal{
                 }
             }
             return df;
+        }
+
+        /** Create a new dataframe, constructed from rows for which the given Rower
+        * returned true from its accept method. 
+        * The returned DataFrame will lose its row names.
+        * */
+        DataFrame* filter(Rower& r) {
+            Key k(0, "bogus name");
+            return filter(r, k);
         }
 
         /** This method clones the Rower and executes the map in parallel. Join is
@@ -463,9 +544,9 @@ class DataFrame: public DataFrameOriginal{
             delete[] rowers;
         }
 
-        static DataFrame* fromArray(Key k, KVStore kvs, size_t size, String** vals) {
+        static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, String** vals) {
             Schema s("S");
-            DataFrame* df = new DataFrame(s);
+            DataFrame* df = new DataFrame(s, *k, kvs);
             Row r(s);
 
             for (int i = 0; i < size; i++) {
@@ -476,9 +557,9 @@ class DataFrame: public DataFrameOriginal{
             return df;
         } 
 
-        static DataFrame* fromArray(Key k, KVStore kvs, size_t size, double* vals) {
+        static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, double* vals) {
             Schema s("D");
-            DataFrame* df = new DataFrame(s);
+            DataFrame* df = new DataFrame(s, *k, kvs);
             Row r(s);
 
             for (int i = 0; i < size; i++) {
@@ -489,9 +570,9 @@ class DataFrame: public DataFrameOriginal{
             return df;
         } 
 
-        static DataFrame* fromArray(Key k, KVStore kvs, size_t size, int* vals) {
+        static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, int* vals) {
             Schema s("I");
-            DataFrame* df = new DataFrame(s);
+            DataFrame* df = new DataFrame(s, *k, kvs);
             Row r(s);
 
             for (int i = 0; i < size; i++) {
@@ -502,9 +583,9 @@ class DataFrame: public DataFrameOriginal{
             return df;
         } 
 
-        static DataFrame* fromArray(Key k, KVStore kvs, size_t size, bool* vals) {
+        static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, bool* vals) {
             Schema s("B");
-            DataFrame* df = new DataFrame(s);
+            DataFrame* df = new DataFrame(s, *k, kvs);
             Row r(s);
 
             for (int i = 0; i < size; i++) {
@@ -515,27 +596,41 @@ class DataFrame: public DataFrameOriginal{
             return df;
         } 
 
-        static DataFrame* fromScalar(Key k, KVStore kvs, String* val) {
+        static DataFrame* fromScalar(Key* k, KVStore* kvs, String* val) {
             return DataFrame::fromArray(k, kvs, 1, &val);
         } 
 
-        static DataFrame* fromScalar(Key k, KVStore kvs, double val) {
+        static DataFrame* fromScalar(Key* k, KVStore* kvs, double val) {
             return DataFrame::fromArray(k, kvs, 1, &val);
         } 
 
-        static DataFrame* fromScalar(Key k, KVStore kvs, int val) {
+        static DataFrame* fromScalar(Key* k, KVStore* kvs, int val) {
             return DataFrame::fromArray(k, kvs, 1, &val);
         } 
 
-        static DataFrame* fromScalar(Key k, KVStore kvs, bool val) {
+        static DataFrame* fromScalar(Key* k, KVStore* kvs, bool val) {
             return DataFrame::fromArray(k, kvs, 1, &val);
         } 
 
-        
-        // <num cols><num rows><schema>[<key (null terminated)><node index> ...]
-        char* serialize() {
-            size_t buff_len = 2 * sizeof(size_t) + ncols();
-            size_t num_keys = ncols() * nrows() / CHUNK_SIZE;
-            size_t key_size = 0;
+        static DataFrame* deserialize(const char* buf, KVStore* kvs) {
+            Schema schema;
+            size_t num_cols = 0;
+            const char* buf_pointer = buf;
+            
+            Key* k = Key::deserialize(buf_pointer);
+            buf_pointer += k->serial_buf_size();
+
+            memcpy(&num_cols, buf_pointer, sizeof(size_t));
+            buf_pointer += sizeof(size_t);
+
+            DataFrame* df = new DataFrame(schema, *k, kvs);
+            for (size_t i = 0; i < num_cols; i++) {
+                df->add_column(Column::deserialize(buf_pointer, kvs));
+                buf_pointer += df->cols_[i]->serial_buf_size();
+            }
+
+            df->num_cols_owned_ = df->ncols();
+
+            return df;
         }
 };

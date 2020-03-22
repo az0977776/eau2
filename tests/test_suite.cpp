@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 
-#include "personal_test_column.h"
-// #include "personal_test_schema.h"
-// #include "personal_test_row.h"
-// #include "personal_test_dataframe.h"
+#include "test_column.h"
+#include "test_schema.h"
+#include "test_row.h"
+#include "test_dataframe.h"
 
 
 int main(int argc, char **argv) {

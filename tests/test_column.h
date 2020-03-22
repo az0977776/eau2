@@ -6,7 +6,7 @@
 #include "../src/column.h"
 #include "../src/keyvaluestore.h"
 
-#include "personal_test_macros.h"
+#include "test_macros.h"
 
 
 /**************************** Test Columns ***************************/
@@ -422,4 +422,121 @@ void test_bool_column_as_string() {
 
 TEST(testColumn, testBoolColExitOnFailAsString) { 
   CS4500_ASSERT_EXIT_255(test_bool_column_as_string);
+}
+
+void test_bool_column_serialize() {
+    KVStore kvs; 
+    String s("foobar");
+    BoolColumn *bc = new BoolColumn(&s, &kvs);
+
+    for (int i = 0 ; i < 5000; i++) {
+      bc->push_back(i % 2);
+    }
+
+    char* serialized_col = bc->serialize();     
+
+    BoolColumn* bc2 = Column::deserialize(serialized_col, &kvs)->as_bool();
+
+    EXPECT_EQ(bc2->size(), bc->size());
+    EXPECT_TRUE(s.equals(bc2->col_name_));
+    EXPECT_EQ(bc2->get(100), bc->get(100));
+    EXPECT_EQ(bc2->get(101), bc->get(101));
+    EXPECT_EQ(bc2->get(4999), bc->get(4999));
+
+    delete bc;
+    delete serialized_col;
+    delete bc2;
+}
+
+TEST(testColumn, testBoolColumnSerialize) { 
+  test_bool_column_serialize();
+}
+
+
+void test_int_column_serialize() {
+    KVStore kvs; 
+    String s("foobar");
+    IntColumn *bc = new IntColumn(&s, &kvs);
+
+    for (int i = 0 ; i < 5000; i++) {
+      bc->push_back(i);
+    }
+
+    char* serialized_col = bc->serialize();     
+
+    IntColumn* bc2 = Column::deserialize(serialized_col, &kvs)->as_int();
+
+    EXPECT_EQ(bc2->size(), bc->size());
+    EXPECT_TRUE(s.equals(bc2->col_name_));
+    EXPECT_EQ(bc2->get(4999), bc->get(4999));
+    EXPECT_EQ(bc2->get(3000), bc->get(3000));
+
+    delete bc;
+    delete serialized_col;
+    delete bc2;
+}
+
+TEST(testColumn, testIntColumnSerialize) { 
+  test_int_column_serialize();
+}
+
+void test_double_column_serialize() {
+    KVStore kvs; 
+    String s("foobar");
+    DoubleColumn *bc = new DoubleColumn(&s, &kvs);
+
+    for (int i = 0 ; i < 5000; i++) {
+      bc->push_back(i / 8.0);
+    }
+
+    char* serialized_col = bc->serialize();     
+
+    DoubleColumn* bc2 = Column::deserialize(serialized_col, &kvs)->as_double();
+
+    EXPECT_EQ(bc2->size(), bc->size());
+    EXPECT_TRUE(s.equals(bc2->col_name_));
+    EXPECT_EQ(bc2->get(4999), bc->get(4999));
+    EXPECT_EQ(bc2->get(3000), bc->get(3000));
+
+    delete bc;
+    delete serialized_col;
+    delete bc2;
+}
+
+TEST(testColumn, testDoubleColumnSerialize) { 
+  test_double_column_serialize();
+}
+
+
+void test_string_column_serialize() {
+    KVStore kvs; 
+    String s("foobar");
+    String s0("abc");
+    String s1("foo");
+    StringColumn *bc = new StringColumn(&s, &kvs);
+
+    for (int i = 0 ; i < 5000; i++) {
+        if (i % 2 == 0) {
+            bc->push_back(&s0);
+        } else {
+            bc->push_back(&s1);
+        }
+    }
+
+    char* serialized_col = bc->serialize();     
+
+    StringColumn* bc2 = Column::deserialize(serialized_col, &kvs)->as_string();
+
+    EXPECT_EQ(bc2->size(), bc->size());
+    EXPECT_TRUE(s.equals(bc2->col_name_));
+    EXPECT_TRUE(bc2->get(4999)->equals(bc->get(4999)));
+    EXPECT_TRUE(bc2->get(3000)->equals(bc->get(3000)));
+
+    delete bc;
+    delete serialized_col;
+    delete bc2;
+}
+
+TEST(testColumn, testStringColumnSerialize) { 
+  test_string_column_serialize();
 }

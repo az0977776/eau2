@@ -6,7 +6,7 @@
 #include "../src/row.h"
 #include "../src/schema.h"
 
-#include "personal_test_macros.h"
+#include "test_macros.h"
 
 
 /**************************** Test Row ***************************/
