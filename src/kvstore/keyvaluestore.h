@@ -1,7 +1,7 @@
 //lang:Cpp
 #pragma once
 
-#include "network.h"
+// #include "network.h"
 #include "map.h"
 #include "keyvalue.h"
 
@@ -15,7 +15,7 @@ class KVStore : public Object {
         Map *map_;
 
         // network layer  -- TODO
-        Client* client_;
+        // Client* client_;
 
         KVStore() {
             // create network
@@ -41,7 +41,7 @@ class KVStore : public Object {
         Value* getAndWait(Key& key) {
             Value* val = nullptr;
             while ((val = map_->get(&key)) == nullptr) {
-                sleep(1);
+                // sleep(1);
             }
             return val->clone();
         }
@@ -53,11 +53,4 @@ class KVStore : public Object {
                 delete temp;  // delete the old value
             }
         }
-
-        /*
-        // we have to delete the Key from the map before we give them the value
-        Value* remove(Key& key) {
-            return map_->pop_item(&key);
-        }
-        */
 };

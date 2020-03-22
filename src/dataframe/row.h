@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "schema.h"
+#include "column.h"
 
 #include "../util/object.h"
 #include "../util/string.h"
@@ -64,18 +65,22 @@ class Box : public Object {
         
         virtual BoolBox* as_bool() {
             abort_if_not(false, "Box is not a boolean");
+            return nullptr;
         }
 
         virtual IntBox* as_int() {
             abort_if_not(false, "Box is not a int");
+            return nullptr;
         }
 
         virtual DoubleBox* as_double() {
             abort_if_not(false, "Box is not a double");
+            return nullptr;
         }
 
         virtual StringBox* as_string() {
             abort_if_not(false, "Box is not a String");
+            return nullptr;
         }
 };
 

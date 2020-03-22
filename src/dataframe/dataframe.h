@@ -551,7 +551,7 @@ class DataFrame: public DataFrameOriginal{
             DataFrame* df = new DataFrame(s, *k, kvs);
             Row r(s);
 
-            for (int i = 0; i < size; i++) {
+            for (size_t i = 0; i < size; i++) {
                 r.set(0, vals[i]);
                 df->add_row(r);
             }
@@ -564,7 +564,7 @@ class DataFrame: public DataFrameOriginal{
             DataFrame* df = new DataFrame(s, *k, kvs);
             Row r(s);
 
-            for (int i = 0; i < size; i++) {
+            for (size_t i = 0; i < size; i++) {
                 r.set(0, vals[i]);
                 df->add_row(r);
             }
@@ -577,7 +577,7 @@ class DataFrame: public DataFrameOriginal{
             DataFrame* df = new DataFrame(s, *k, kvs);
             Row r(s);
 
-            for (int i = 0; i < size; i++) {
+            for (size_t i = 0; i < size; i++) {
                 r.set(0, vals[i]);
                 df->add_row(r);
             }
@@ -590,7 +590,7 @@ class DataFrame: public DataFrameOriginal{
             DataFrame* df = new DataFrame(s, *k, kvs);
             Row r(s);
 
-            for (int i = 0; i < size; i++) {
+            for (size_t i = 0; i < size; i++) {
                 r.set(0, vals[i]);
                 df->add_row(r);
             }

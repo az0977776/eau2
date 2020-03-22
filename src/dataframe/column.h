@@ -642,7 +642,6 @@ class StringColumn : public Column {
             check_and_reallocate_();
 
             size_t chunk_idx = len_ / CHUNK_SIZE;
-            size_t item_idx = len_ % CHUNK_SIZE;
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
             Value* v = kv_->get(*chunk_key);

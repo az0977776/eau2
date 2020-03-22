@@ -32,7 +32,7 @@ class Key : public Object {
         }
 
         size_t hash() {
-            return key_->hash() << 2 + node_index_;
+            return (key_->hash() << 2) + node_index_;
         }
 
         Key* clone() {
@@ -143,7 +143,7 @@ class Value : public Object {
             printf("PRINTING VALUE AS STRINGS\n");
             char* to_print = val_;
             size_t string_count = 0;
-            while (to_print - val_ < bytes_) {
+            while ((size_t)(to_print - val_) < bytes_) {
                 printf("String #%zu: len = %zu \"%s\"\n", string_count, strlen(to_print), to_print);
                 
                 to_print += (strlen(val_) + 1);

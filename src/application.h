@@ -1,7 +1,7 @@
 //lang:CwC
 #pragma once
 
-#include "object.h"
+#include "../src/util/object.h"
 
 class Application : public Object{
     public:

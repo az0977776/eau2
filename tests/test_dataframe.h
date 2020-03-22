@@ -565,4 +565,41 @@ TEST(testDataFrame, testDataFrameEquals) {
     test_dataframe_equals();
 }
 
+void test_dataframe_serialize() {
+    Key key(0, "Some_key");
+    KVStore kvs;
+    int size = 10;
+    String s("apple");
+    DataFrame* df = build_data_frame(size, s, key, kvs);
 
+    char* serialized_df = df->serialize();
+
+    DataFrame* df2 = DataFrame::deserialize(serialized_df, &kvs);
+
+    ASSERT_EQ(df2->ncols(), df->ncols());
+    ASSERT_EQ(df2->nrows(), df->nrows());
+    
+    EXPECT_EQ(df2->get_schema().col_type(0), df->get_schema().col_type(0));
+    EXPECT_EQ(df2->get_schema().col_type(1), df->get_schema().col_type(1));
+    EXPECT_EQ(df2->get_schema().col_type(2), df->get_schema().col_type(2));
+    EXPECT_EQ(df2->get_schema().col_type(3), df->get_schema().col_type(3));
+
+    EXPECT_EQ(df2->get_bool(0, 1), df->get_bool(0, 1));
+    EXPECT_EQ(df2->get_bool(0, 8), df->get_bool(0, 8));
+    
+    EXPECT_EQ(df2->get_int(1, 0), df->get_int(1, 0));
+    EXPECT_EQ(df2->get_int(1, 4), df->get_int(1, 4));
+    
+    EXPECT_FLOAT_EQ(df2->get_double(2, 0), df->get_double(2, 0));
+    EXPECT_FLOAT_EQ(df2->get_double(2, 2), df->get_double(2, 2));
+    
+    EXPECT_TRUE(df2->get_string(3, 1)->equals(&s));
+
+    delete df;
+    delete df2;
+    delete serialized_df;
+}
+
+TEST(testDataFrame, testDataFrameSerialize) {
+    test_dataframe_serialize();
+}

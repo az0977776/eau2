@@ -5,6 +5,7 @@
 
 #include "../util/object.h"
 #include "../util/string.h"
+#include "column.h"
 
 /*************************************************************************
  * Schema::
