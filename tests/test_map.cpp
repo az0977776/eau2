@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-#include "../src/dataframe.h"
-#include "../src/sorer.h"
+#include "../src/dataframe/dataframe.h"
+#include "../src/dataframe/sorer.h"
 
 /**
  * This is a Dataframe Rower that will compute the fibonacci number based on

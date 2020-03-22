@@ -1,8 +1,8 @@
 //lang::CwC
 #pragma once
 
-#include "object.h"
-#include "string.h"
+#include "../util/object.h"
+#include "../util/string.h"
 
 // A key is associates a String with a node index where the data is located
 class Key : public Object {

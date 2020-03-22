@@ -3,10 +3,11 @@
 
 #include <stdlib.h>
 
-#include "object.h"
-#include "string.h"
 #include "schema.h"
-#include "helper.h"
+
+#include "../util/object.h"
+#include "../util/string.h"
+#include "../util/helper.h"
 
 /*****************************************************************************
  * Fielder::

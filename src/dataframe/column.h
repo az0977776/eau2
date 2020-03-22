@@ -4,11 +4,13 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-#include "object.h"
-#include "string.h"
-#include "keyvalue.h"
-#include "keyvaluestore.h"
-#include "vector.h"
+#include "../util/string.h"
+#include "../util/object.h"
+#include "../util/string.h"
+#include "../util/vector.h"
+
+#include "../kvstore/keyvalue.h"
+#include "../kvstore/keyvaluestore.h"
 
 static const size_t ARRAY_STARTING_CAP = 4;
 

@@ -1,10 +1,11 @@
 //lang::CwC
 #pragma once
 
-#include "string.h"
-#include "object.h"
-#include "array.h"
 #include "keyvalue.h"
+
+#include "../util/string.h"
+#include "../util/object.h"
+#include "../util/array.h"
 
 // represents an array that is used for bucket in a hashmap
 // each even index i is a key and i+1 is the value assocaited with the key

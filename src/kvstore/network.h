@@ -11,11 +11,11 @@
 #include <sys/time.h>
 #include <pthread.h>
 
-#include "helper.h"
-#include "object.h"
-#include "string.h"
-#include "serial.h"
-#include "thread.h"
+#include "../util/helper.h"
+#include "../util/object.h"
+#include "../util/string.h"
+#include "../util/serial.h"
+#include "../util/thread.h"
 
 static const int SERVER_LISTEN_PORT = 8080;
 static const int CLIENT_NUM = 5;

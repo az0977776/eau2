@@ -4,13 +4,15 @@
 #include <stdlib.h>
 
 #include "row.h"
-#include "object.h"
-#include "string.h"
 #include "schema.h"
 #include "column.h"
-#include "thread.h"
-#include "keyvaluestore.h"
-#include "keyvalue.h"
+
+#include "../util/object.h"
+#include "../util/string.h"
+#include "../util/thread.h"
+
+#include "../kvstore/keyvaluestore.h"
+#include "../kvstore/keyvalue.h"
 
 /*****************************************************************************
 Helper classes for DataFrame

@@ -3,9 +3,8 @@
 
 #include <stdlib.h>
 
-#include "object.h"
-#include "string.h"
-#include "column.h"
+#include "../util/object.h"
+#include "../util/string.h"
 
 /*************************************************************************
  * Schema::

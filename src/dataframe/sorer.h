@@ -4,11 +4,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "object.h"
-#include "column.h"
-#include "helper.h"
-#include "schema.h"
 #include "dataframe.h"
+#include "schema.h"
+#include "column.h"
+
+#include "../util/object.h"
+#include "../util/helper.h"
 
 // The maximum length of a line buffer. No lines over 4095 bytes
 static const int buff_len = 4096 * 16; 

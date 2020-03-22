@@ -1,5 +1,3 @@
-#pragma once
-
 #include <gtest/gtest.h>
 
 #define CS4500_ASSERT_EXIT_ZERO(a)  ASSERT_EXIT(a(), ::testing::ExitedWithCode(0), ".*");

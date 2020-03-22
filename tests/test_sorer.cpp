@@ -1,8 +1,8 @@
 //lang:cpp
-#include "../src/string.h"
-#include "../src/sorer.h"
-#include "../src/helper.h"
-#include "../src/column.h"
+#include "../src/util/string.h"
+#include "../src/dataframe/sorer.h"
+#include "../src/util/helper.h"
+#include "../src/dataframe/column.h"
 
 /**
  * These functions are used for testing.

@@ -1,13 +1,10 @@
-#pragma once
-
 #include <gtest/gtest.h>
 
-#include "../src/string.h"  
-#include "../src/column.h"
-#include "../src/keyvaluestore.h"
+#include "../src/util/string.h"  
+#include "../src/dataframe/column.h"
+#include "../src/kvstore/keyvaluestore.h"
 
 #include "test_macros.h"
-
 
 /**************************** Test Columns ***************************/
 /******* Test IntColumn **********/

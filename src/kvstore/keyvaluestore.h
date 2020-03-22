@@ -1,11 +1,12 @@
 //lang:Cpp
 #pragma once
 
-#include "object.h"
-#include "string.h"
 #include "network.h"
 #include "map.h"
 #include "keyvalue.h"
+
+#include "../util/object.h"
+#include "../util/string.h"
 
 class KVStore : public Object {
     public:
