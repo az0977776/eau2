@@ -34,6 +34,10 @@ class Key : public Object {
         Key* clone() {
             return new Key(node_index_, key_->c_str());
         }
+
+        void print() {
+            pln(key_->c_str());
+        }
 };
 
 // A value is a wrapper for a serialized object
@@ -49,7 +53,8 @@ class Value : public Object {
         }
 
         Value(size_t bytes) {
-            val_ = new char[bytes];
+            bytes_ = bytes;
+            val_ = new char[bytes_];
         }
 
         ~Value() {
@@ -58,6 +63,13 @@ class Value : public Object {
 
         char* get() {
             return val_;
+        }
+
+        // delete this
+        void set_zero() {
+            for (size_t i = 0; i < bytes_; i++) {
+                val_[i] = 0;
+            }
         }
 
         size_t size() {
@@ -85,5 +97,25 @@ class Value : public Object {
 
         Value* clone() {
             return new Value(bytes_, val_);
+        }
+
+        void print() {
+            size_t* temp = reinterpret_cast<size_t*>(val_);
+            size_t len = bytes_ / sizeof(size_t);
+            for (size_t i = 0; i < len; i += 4) {
+                printf("[bytes %zu to %zu]  0x%zX   0x%zX   0x%zX   0x%zX\n", i * sizeof(size_t), (i + 4) * sizeof(size_t) - 1, temp[i], temp[i + 1], temp[i + 2], temp[i + 3]);
+            }
+        }
+
+        void print_strings() {
+            printf("PRINTING VALUE AS STRINGS\n");
+            char* to_print = val_;
+            size_t string_count = 0;
+            while (to_print - val_ < bytes_) {
+                printf("String #%zu: len = %zu \"%s\"\n", string_count, strlen(to_print), to_print);
+                
+                to_print += (strlen(val_) + 1);
+                string_count++;
+            }
         }
 };

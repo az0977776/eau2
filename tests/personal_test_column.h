@@ -23,13 +23,9 @@ void test_int_column() {
 
     size_t num_elements = 50000;
 
-    printf("pushing back now\n");
     for (int i = 0 ; i < num_elements; i++) {
       ic->push_back(i);
-      printf("%d\n", i);
     }
-
-    printf("DID WE FINISH PUSING ALL INT VALUES\n");
 
     ASSERT_EQ(ic->size(), num_elements);
     ASSERT_EQ(ic->get(4999), 4999);
@@ -225,12 +221,13 @@ void test_string_column() {
     }
 
     ASSERT_EQ(ic->size(), 5000);
+
     ASSERT_TRUE(ic->get(4999)->equals(a));
 
     ic->set(1555, b);
     ASSERT_TRUE(ic->get(1555)->equals(b));
 
-    delete ic;
+    // delete ic;
     delete a;
     delete b;
 }
@@ -270,19 +267,18 @@ void test_string_column_var_args() {
     String s2("2");
     String s3("3");
     String s4("4");
-    StringColumn *sc = new StringColumn(&col_name, &kvs, 4, &s1, &s2, &s3, nullptr);
+    StringColumn *sc = new StringColumn(&col_name, &kvs, 3, &s1, &s2, &s3);
 
     EXPECT_EQ(sc->get_type(), 'S');
-    EXPECT_EQ(sc->size(), 4);
+    EXPECT_EQ(sc->size(), 3);
 
     EXPECT_TRUE(sc->get(0)->equals(&s1));
     EXPECT_TRUE(sc->get(1)->equals(&s2));
     EXPECT_TRUE(sc->get(2)->equals(&s3));
-    EXPECT_EQ(sc->get(3), nullptr);
 
     sc->push_back(&s4);
-    EXPECT_EQ(sc->size(), 5);
-    EXPECT_TRUE(sc->get(4)->equals(&s4));
+    EXPECT_EQ(sc->size(), 4);
+    EXPECT_TRUE(sc->get(3)->equals(&s4));
 
     delete sc;
 }

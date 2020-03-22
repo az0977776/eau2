@@ -133,6 +133,7 @@ class Map : public Object {
             if (o == nullptr) {
                 // key does not exist yet
                 check_rehash_();
+                h = key->hash() % num_buckets_;
                 keys_->push(key);
                 values_->push(value);
             } else {
@@ -265,10 +266,20 @@ class Map : public Object {
                 for (size_t i = 0; i < num_buckets_; i++) {
                     buckets_[i] = new Bucket();
                 }
+
+                Array<Key>* keys_temp = keys_;
+                Array<Value>* values_temp = values_;
+
+                keys_ = new Array<Key>();
+                values_ = new Array<Value>();
+
                 // adds the keys and values into the new list
-                for (size_t i = 0; i < size(); i++) {
-                    add(keys_->get(i), values_->get(i));
+                for (size_t i = 0; i < keys_temp->size(); i++) {
+                    add(keys_temp->get(i), values_temp->get(i));
                 }
+
+                delete keys_temp;
+                delete values_temp;
             }
     }
 };

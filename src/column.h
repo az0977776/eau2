@@ -119,7 +119,7 @@ class DoubleColumn;
 class IntColumn;
 class BoolColumn;
 
-static const size_t CHUNK_SIZE = sizeof(size_t) * 16;
+static const size_t CHUNK_SIZE = sizeof(size_t) * 128;  // on 64-bit machine this is 8 * 128 = 1024
 
 /**************************************************************************
  * Column ::
@@ -144,6 +144,9 @@ class Column : public Object {
 
         ~Column() {
             delete col_name_;
+            for (size_t i = 0; i < len_; i++) {
+                delete chunk_keys_->get(i);
+            }
             delete chunk_keys_;
         }
 
@@ -152,7 +155,7 @@ class Column : public Object {
             char* ret = new char[col_name_len + 1 + sizeof(size_t)];
             memcpy(ret, col_name_->c_str(), col_name_len);
             ret[col_name_len] = ':';
-            memcpy(ret+col_name_len+1, &chunk_idx, sizeof(size_t));
+            sprintf(ret+col_name_len+1, "0x%X", (unsigned int)chunk_idx);
             return ret;
         }
 
@@ -240,8 +243,9 @@ class BoolColumn : public Column {
                 char* new_chunk_key = generate_chunk_name(chunk_idx);
 
                 Key* k = new Key(0, new_chunk_key);
-                Value* v = new Value(CHUNK_SIZE);
-                kv_->put(*k, *v);
+                Value v(CHUNK_SIZE);
+                v.set_zero();
+                kv_->put(*k, v);
 
                 chunk_keys_->push_back(k);
             }
@@ -250,14 +254,17 @@ class BoolColumn : public Column {
         virtual void push_back(bool val) {
             check_and_reallocate_();
             size_t chunk_idx = len_ / CHUNK_SIZE;
-            size_t item_idx = len_ % CHUNK_SIZE;
+            size_t item_idx = len_ / (CHUNK_SIZE / sizeof(size_t));
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
             Value* value = kv_->get(*chunk_key);
             char* v = value->get();
-            size_t buf;
+
+            size_t buf = 0;
             memcpy(&buf, v + item_idx * sizeof(size_t), sizeof(size_t));
-            size_t bit_idx = item_idx % sizeof(size_t);
+            //printf("before: 0x%zX\n", buf);
+            size_t bit_idx = len_ % (sizeof(size_t) * 8);
+            //printf("chunk_idx: %zu, item_idx: %zu, bit_idx: %zu\n", chunk_idx, item_idx, bit_idx);
 
             if (val) {
                 buf |= (1 << bit_idx);
@@ -266,6 +273,7 @@ class BoolColumn : public Column {
             }
 
             memcpy(v + item_idx * sizeof(size_t), &buf, sizeof(size_t));
+            //printf("after:  0x%zX\n", buf);
             Value new_value(CHUNK_SIZE, v);
             kv_->put(*chunk_key, new_value);
 
@@ -278,17 +286,18 @@ class BoolColumn : public Column {
         bool get(size_t idx) {
             abort_if_not(idx < size(), "BoolColumn.get(): out of bounds");
             size_t chunk_idx = idx / CHUNK_SIZE;
-            size_t item_idx = idx % CHUNK_SIZE;
+            size_t item_idx = idx / (CHUNK_SIZE / sizeof(size_t));
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
             Value* value = kv_->get(*chunk_key);
             char* v = value->get();
             size_t buf;
             memcpy(&buf, v + item_idx * sizeof(size_t), sizeof(size_t));
-            size_t bit_idx = item_idx % sizeof(size_t);
+            size_t bit_idx = idx % (sizeof(size_t) * 8); // number of bits in size_t
 
+            bool ret = (buf >> bit_idx) & 1;
             delete value;
-            return (buf >> bit_idx) & 1;
+            return ret;
         }
 
         BoolColumn* as_bool() {
@@ -299,14 +308,14 @@ class BoolColumn : public Column {
             abort_if_not(idx < size(), "BoolColumn.set(): out of bounds");
 
             size_t chunk_idx = idx / CHUNK_SIZE;
-            size_t item_idx = idx % CHUNK_SIZE;
+            size_t item_idx = idx / (CHUNK_SIZE / sizeof(size_t));
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
             Value* value = kv_->get(*chunk_key);
             char* v = value->get();
             size_t buf;
             memcpy(&buf, v + item_idx * sizeof(size_t), sizeof(size_t));
-            size_t bit_idx = item_idx % sizeof(size_t);
+            size_t bit_idx = idx % (sizeof(size_t) * 8); // number of bits in size_t
 
             if (val) {
                 buf |= (1 << bit_idx);
@@ -373,11 +382,10 @@ class IntColumn : public Column {
                 size_t chunk_idx = len_ / CHUNK_SIZE;
 
                 char* new_chunk_key = generate_chunk_name(chunk_idx);
-
                 Key* k = new Key(0, new_chunk_key);
-                Value* v = new Value(CHUNK_SIZE * sizeof(int));
-                kv_->put(*k, *v);
-                
+                Value v(0);
+                kv_->put(*k, v);
+
                 chunk_keys_->push_back(k);
             }
         }
@@ -391,7 +399,7 @@ class IntColumn : public Column {
             Value* value = kv_->get(*chunk_key);
             char* v = value->get();
             memcpy(v + item_idx * sizeof(int), &val, sizeof(int));
-            Value new_value(CHUNK_SIZE, v);
+            Value new_value(CHUNK_SIZE * sizeof(int), v);
             kv_->put(*chunk_key, new_value);
 
             len_++;
@@ -408,7 +416,7 @@ class IntColumn : public Column {
             Value* v = kv_->get(*chunk_key);
             char* val_buf = v->get();
             memcpy(val_buf + item_idx * sizeof(int), &val, sizeof(int));
-            Value new_value(CHUNK_SIZE, val_buf);
+            Value new_value(CHUNK_SIZE * sizeof(int), val_buf);
             kv_->put(*chunk_key, new_value);
 
             delete v;
@@ -448,8 +456,8 @@ class DoubleColumn : public Column {
                 char* new_chunk_key = generate_chunk_name(chunk_idx);
 
                 Key* k = new Key(0, new_chunk_key);
-                Value* v = new Value(CHUNK_SIZE);
-                kv_->put(*k, *v);
+                Value v(0);
+                kv_->put(*k, v);
 
                 chunk_keys_->push_back(k);
             }
@@ -465,7 +473,7 @@ class DoubleColumn : public Column {
 
             Value* val = kv_->get(*chunk_key);
             char* v = val->get();
-            int rv = 0;
+            double rv = 0;
             memcpy(&rv, v + item_idx * sizeof(double), sizeof(double));
             delete val;
             return rv;
@@ -484,7 +492,7 @@ class DoubleColumn : public Column {
             Value* value = kv_->get(*chunk_key);
             char* v = value->get();
             memcpy(v + item_idx * sizeof(double), &val, sizeof(double));
-            Value new_value(CHUNK_SIZE, v);
+            Value new_value(CHUNK_SIZE * sizeof(double), v);
             kv_->put(*chunk_key, new_value);
 
             len_++;
@@ -501,7 +509,7 @@ class DoubleColumn : public Column {
             Value* v = kv_->get(*chunk_key);
             char* val_buf = v->get();
             memcpy(val_buf + item_idx * sizeof(double), &val, sizeof(double));
-            Value new_value(CHUNK_SIZE, val_buf);
+            Value new_value(CHUNK_SIZE * sizeof(double), val_buf);
             kv_->put(*chunk_key, new_value);
 
             delete v;
@@ -526,7 +534,8 @@ class StringColumn : public Column {
             va_start (arguments, n);
 
             for (int i = 0; i < n; i++ ) {
-                push_back(va_arg(arguments, String*));
+                String* tmp = va_arg(arguments, String*);
+                push_back(tmp);
             }
             va_end(arguments);
         }
@@ -550,8 +559,8 @@ class StringColumn : public Column {
                 char* new_chunk_key = generate_chunk_name(chunk_idx);
 
                 Key* k = new Key(0, new_chunk_key);
-                Value* v = new Value(1);
-                kv_->put(*k, *v);
+                Value v(0);
+                kv_->put(*k, v);
 
                 chunk_keys_->push_back(k);
             }
@@ -564,7 +573,6 @@ class StringColumn : public Column {
             size_t chunk_idx = idx / CHUNK_SIZE;
             size_t item_idx = idx % CHUNK_SIZE;
             Key* chunk_key = chunk_keys_->get(chunk_idx);
-
             Value* v = kv_->get(*chunk_key);
             char* val_buf = v->get();
 
@@ -572,8 +580,9 @@ class StringColumn : public Column {
                 val_buf += (strlen(val_buf) + 1);
             }
 
+            String* ret = new String(val_buf);
             delete v;
-            return new String(val_buf);
+            return ret;
         }
                 
         virtual void push_back(String* val) {
@@ -587,10 +596,16 @@ class StringColumn : public Column {
             Value* v = kv_->get(*chunk_key);
             Value new_value(v->size() + val->size() + 1);
             char* val_buf = new_value.get();
+
+            // copy in the old values
             memcpy(val_buf, v->get(), v->size());
+
+            // copy in the new val that is added
             memcpy(val_buf + v->size(), val->c_str(), val->size() + 1);
+
             kv_->put(*chunk_key, new_value);
             delete v;
+            len_++;
         }
 
         /** Out of bound idx is undefined. */
