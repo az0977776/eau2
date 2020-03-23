@@ -449,6 +449,47 @@ TEST(testColumn, testBoolColumnSerialize) {
   test_bool_column_serialize();
 }
 
+// This checks that the serial buf size is correct by checking that serialize does not write to it
+void test_bool_column_serial_buf_size() {
+    char init = 'A';
+    KVStore kvs; 
+    String s("foobar");
+    BoolColumn bc(&s, &kvs);
+
+    for (int i = 0 ; i < 5000; i++) {
+      bc.push_back(i % 2);
+    }
+
+    size_t buf_len = bc.serial_buf_size();
+
+    char* buf = new char[2 * buf_len];
+    for (size_t i = 0; i < 2 * buf_len; i++) {
+        buf[i] = init;  // set to a non zero value ...
+    }
+
+    bc.serialize(buf); // serialize into the buffer
+
+    // check that it can still deserialize correctly
+    BoolColumn* bc2 = Column::deserialize(buf, &kvs)->as_bool();
+
+    EXPECT_EQ(bc2->size(), bc.size());
+    EXPECT_TRUE(s.equals(bc2->col_name_));
+    EXPECT_EQ(bc2->get(100), bc.get(100));
+    EXPECT_EQ(bc2->get(101), bc.get(101));
+    EXPECT_EQ(bc2->get(4999), bc.get(4999));
+
+    // all char after the buf_len should be unchanged ... 
+    for (size_t i = buf_len; i < 2 * buf_len; i++) {
+        EXPECT_EQ(buf[i], init);
+    }
+
+    delete buf;
+    delete bc2;
+}
+
+TEST(testColumn, testBoolColumnSerialBufSize) {
+    test_bool_column_serial_buf_size();
+}
 
 void test_int_column_serialize() {
     KVStore kvs; 
@@ -477,6 +518,47 @@ TEST(testColumn, testIntColumnSerialize) {
   test_int_column_serialize();
 }
 
+// This checks that the serial buf size is correct by checking that serialize does not write to it
+void test_int_column_serial_buf_size() {
+    char init = 'A';
+    KVStore kvs; 
+    String s("foobar");
+    IntColumn ic(&s, &kvs);
+
+    for (int i = 0 ; i < 5000; i++) {
+      ic.push_back(i);
+    }
+
+    size_t buf_len = ic.serial_buf_size();
+
+    char* buf = new char[2 * buf_len];
+    for (size_t i = 0; i < 2 * buf_len; i++) {
+        buf[i] = init;  // set to a non zero value ...
+    }
+
+    ic.serialize(buf); // serialize into the buffer
+
+    // check that it can still deserialize correctly
+    IntColumn* ic2 = Column::deserialize(buf, &kvs)->as_int();
+
+    EXPECT_EQ(ic2->size(), ic.size());
+    EXPECT_TRUE(s.equals(ic2->col_name_));
+    EXPECT_EQ(ic2->get(4999), ic.get(4999));
+    EXPECT_EQ(ic2->get(3000), ic.get(3000));
+
+    // all char after the buf_len should be unchanged ... 
+    for (size_t i = buf_len; i < 2 * buf_len; i++) {
+        EXPECT_EQ(buf[i], init);
+    }
+
+    delete buf;
+    delete ic2;
+}
+
+TEST(testColumn, testIntColumnSerialBufSize) {
+    test_int_column_serial_buf_size();
+}
+
 void test_double_column_serialize() {
     KVStore kvs; 
     String s("foobar");
@@ -502,6 +584,47 @@ void test_double_column_serialize() {
 
 TEST(testColumn, testDoubleColumnSerialize) { 
   test_double_column_serialize();
+}
+
+// This checks that the serial buf size is correct by checking that serialize does not write to it
+void test_double_column_serial_buf_size() {
+    char init = 'A';
+    KVStore kvs; 
+    String s("foobar");
+    DoubleColumn dc(&s, &kvs);
+
+    for (int i = 0 ; i < 5000; i++) {
+      dc.push_back(i / 8.0);
+    }
+
+    size_t buf_len = dc.serial_buf_size();
+
+    char* buf = new char[2 * buf_len];
+    for (size_t i = 0; i < 2 * buf_len; i++) {
+        buf[i] = init;  // set to a non zero value ...
+    }
+
+    dc.serialize(buf); // serialize into the buffer
+
+    // check that it can still deserialize correctly
+    DoubleColumn* dc2 = Column::deserialize(buf, &kvs)->as_double();
+
+    EXPECT_EQ(dc2->size(), dc.size());
+    EXPECT_TRUE(s.equals(dc2->col_name_));
+    EXPECT_EQ(dc2->get(4999), dc.get(4999));
+    EXPECT_EQ(dc2->get(3000), dc.get(3000));
+
+    // all char after the buf_len should be unchanged ... 
+    for (size_t i = buf_len; i < 2 * buf_len; i++) {
+        EXPECT_EQ(buf[i], init);
+    }
+
+    delete buf;
+    delete dc2;
+}
+
+TEST(testColumn, testDoubleColumnSerialBufSize) {
+    test_double_column_serial_buf_size();
 }
 
 
@@ -537,3 +660,52 @@ void test_string_column_serialize() {
 TEST(testColumn, testStringColumnSerialize) { 
   test_string_column_serialize();
 }
+
+// This checks that the serial buf size is correct by checking that serialize does not write to it
+void test_string_column_serial_buf_size() {
+    char init = 'A';
+    KVStore kvs; 
+    String s("foobar");
+    String s0("abc");
+    String s1("foo");
+    StringColumn sc(&s, &kvs);
+
+    for (int i = 0 ; i < 5000; i++) {
+        if (i % 2 == 0) {
+            sc.push_back(&s0);
+        } else {
+            sc.push_back(&s1);
+        }
+    }
+
+    size_t buf_len = sc.serial_buf_size();
+
+    char* buf = new char[2 * buf_len];
+    for (size_t i = 0; i < 2 * buf_len; i++) {
+        buf[i] = init;  // set to a non zero value ...
+    }
+
+    sc.serialize(buf); // serialize into the buffer
+
+    // check that it can still deserialize correctly
+    StringColumn* sc2 = Column::deserialize(buf, &kvs)->as_string();
+
+    EXPECT_EQ(sc2->size(), sc.size());
+    EXPECT_TRUE(s.equals(sc2->col_name_));
+    EXPECT_TRUE(sc2->get(4999)->equals(sc.get(4999)));
+    EXPECT_TRUE(sc2->get(3000)->equals(sc.get(3000)));
+
+    // all char after the buf_len should be unchanged ... 
+    for (size_t i = buf_len; i < 2 * buf_len; i++) {
+        EXPECT_EQ(buf[i], init);
+    }
+
+    delete buf;
+    delete sc2;
+}
+
+TEST(testColumn, testStringColumnSerialBufSize) {
+    test_string_column_serial_buf_size();
+}
+
+

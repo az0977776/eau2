@@ -67,7 +67,7 @@ class Key : public Object {
             memcpy(name, buf + sizeof(size_t), name_len); 
 
             Key* ret = new Key(node_index, name);
-            delete name;
+            delete[] name;
             return ret;
         }
 };
@@ -97,13 +97,6 @@ class Value : public Object {
             return val_;
         }
 
-        // delete this
-        void set_zero() {
-            for (size_t i = 0; i < bytes_; i++) {
-                val_[i] = 0;
-            }
-        }
-
         size_t size() {
             return bytes_;
         }
@@ -131,6 +124,7 @@ class Value : public Object {
             return new Value(bytes_, val_);
         }
 
+        // For debugging the bytes. this will print the val in four size_t as hexs
         void print() {
             size_t* temp = reinterpret_cast<size_t*>(val_);
             size_t len = bytes_ / sizeof(size_t);
@@ -139,6 +133,8 @@ class Value : public Object {
             }
         }
 
+        // for debugging the bytes as strings
+        // prints until a null byte, then new lines
         void print_strings() {
             printf("PRINTING VALUE AS STRINGS\n");
             char* to_print = val_;

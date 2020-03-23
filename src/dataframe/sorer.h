@@ -19,23 +19,32 @@ static const int infer_line_count = 500;
 class SOR : public Object {
     public:
         FILE* file_;
+        String* filename_;
+        KVStore* kvs_;
 
-        SOR(const char* filename) { 
+        SOR(const char* filename, KVStore* kvs) { 
+            kvs_ = kvs;
+            filename_ = new String(filename);
             file_ = fopen(filename, "r");
             abort_if_not(file_ != NULL, "File is null pointer");
         }
 
         ~SOR() {
             fclose(file_);
+            delete filename_;
         }
         
         // Reads in the data from the file starting at the from byte 
         // and reading at most len bytes
         DataFrame* read(size_t from, size_t len) {
+            Key* key = new Key(0, filename_->c_str());
             Schema* schema = infer_columns_(from, len);
-            DataFrame* df = new DataFrame(*schema);
+            DataFrame* df = new DataFrame(*schema, *key, kvs_);
+            printf("before parsing the dataframe\n");
             parse_(df, from, len);
+            printf("after parsing the df\n");
             delete schema;
+            delete key;
             return df;
         }
 
@@ -247,7 +256,6 @@ class SOR : public Object {
                         }
                     }
                 }
-
                 df->add_row(df_row);
                 delete[] row;
             }

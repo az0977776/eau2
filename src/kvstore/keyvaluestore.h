@@ -27,7 +27,18 @@ class KVStore : public Object {
         }
 
         ~KVStore() {
-            // TODO: delete the keys and values owned by this key value store
+            Key** keys = map_->keys();
+            Value** vals = map_->values();
+            size_t size = map_->size();
+
+            for (size_t i = 0; i < size; i++) {
+                delete keys[i];
+                delete vals[i];
+            }
+
+            delete[] keys;
+            delete[] vals;
+            delete map_;
         }
 
         Value* get(Key& key) {

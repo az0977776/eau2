@@ -126,5 +126,95 @@ TEST(testKey, testKeySerialBufSize) {
 
 // *************************** Value Tests ***********************************
 
+void test_value_get() {
+    const char* buf = "This is a test";
+    Value v(strlen(buf) + 1, buf);
+
+    for (size_t i = 0; i < strlen(buf) + 1; i++) {
+        EXPECT_EQ(buf[i], v.get()[i]);
+    }
+}
+
+TEST(testValue, testValueGet) {
+    test_value_get();
+}
+
+void test_value_size() {
+    const char* buf = "This is a test";
+    Value v(strlen(buf) + 1, buf);
+
+    EXPECT_EQ(strlen(buf) + 1, v.size());
+}
+
+TEST(testValue, testValueSize) {
+    test_value_size();
+}
+
+void test_value_equals() {
+    const char* buf = "this is one test";
+    size_t buf_len = strlen(buf) + 1;
+
+    const char* other_buf = "another one to test that is much longer";
+    size_t other_buf_len = strlen(other_buf) + 1;
+
+    Value value(buf_len, buf);
+    Value other(other_buf_len, other_buf);
+    Value larger_size(buf_len * 2, buf);
+    Value same(buf_len, buf);
+
+    EXPECT_TRUE(value.equals(&value));
+    EXPECT_TRUE(value.equals(&same));
+
+    EXPECT_FALSE(value.equals(&other));
+    EXPECT_FALSE(value.equals(&larger_size));
+}
+
+TEST(testValue, testValueEquals) {
+    test_value_equals();
+}
+
+void test_value_clone() {
+    const char* buf = "this is one test";
+    size_t buf_len = strlen(buf) + 1;
+    Value value(buf_len, buf);
+    Value* copy = value.clone();
+
+    EXPECT_TRUE(value.equals(copy));
+
+    delete copy;
+}
+
+TEST(testValue, testValueClone) {
+    test_value_clone();
+}
+
+void test_value_hash() {
+    const char* buf = "this is one test";
+    size_t buf_len = strlen(buf) + 1;
+
+    const char* other_buf = "another one to test that is much longer";
+    size_t other_buf_len = strlen(other_buf) + 1;
+
+    Value value(buf_len, buf);
+    Value other(other_buf_len, other_buf);
+    Value larger_size(buf_len * 2, buf);
+    Value same(buf_len, buf);
+
+    EXPECT_TRUE(value.equals(&value));
+    EXPECT_EQ(value.hash(), value.hash());
+
+    EXPECT_TRUE(value.equals(&same));
+    EXPECT_EQ(value.hash(), same.hash());
+
+    EXPECT_FALSE(value.equals(&other));
+    EXPECT_NE(value.hash(), other.hash());
+
+    EXPECT_FALSE(value.equals(&larger_size));
+    EXPECT_NE(value.hash(), larger_size.hash());
+}
+
+TEST(testValue, testValueHash) {
+    test_value_hash();
+}
 
 

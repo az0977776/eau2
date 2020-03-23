@@ -212,8 +212,7 @@ class DataFrameOriginal : public Object {
             char* serialized_df = serialize();
             Value v(serial_buf_size(), serialized_df);
             kv_->put(*key_, v);
-
-            delete serialized_df; 
+            delete[] serialized_df; 
         }
 
         Key* get_key() {
@@ -290,6 +289,7 @@ class DataFrameOriginal : public Object {
             check_and_reallocate_();
             cols_[cols_len_] = col;
             cols_len_++;
+            add_self_to_kv_();
         }
 
         /** Return the value at the given column and row. Accessing rows or
@@ -320,21 +320,25 @@ class DataFrameOriginal : public Object {
         void set(size_t col, size_t row, int val) {
             abort_if_not(col < cols_len_, "DataFrameOriginal.set(int): column index out of bounds");
             cols_[col]->as_int()->set(row, val);
+            add_self_to_kv_();
         }
 
         void set(size_t col, size_t row, bool val) {
             abort_if_not(col < cols_len_, "DataFrameOriginal.set(bool): column index out of bounds");
             cols_[col]->as_bool()->set(row, val);
+            add_self_to_kv_();
         }
 
         void set(size_t col, size_t row, double val) {
             abort_if_not(col < cols_len_, "DataFrameOriginal.set(double): column index out of bounds");
             cols_[col]->as_double()->set(row, val);
+            add_self_to_kv_();
         }
 
         void set(size_t col, size_t row, String* val) {
             abort_if_not(col < cols_len_, "DataFrameOriginal.set(String*): column index out of bounds");
             cols_[col]->as_string()->set(row, val);
+            add_self_to_kv_();
         }
 
         /** Set the fields of the given row object with values from the columns at
@@ -372,6 +376,7 @@ class DataFrameOriginal : public Object {
             if (cols_len_ > 0 && cols_[0]->size() > schema_.length()) {
                 schema_.add_row(); // nameless row
             }
+            add_self_to_kv_();
         }
 
 
@@ -391,6 +396,7 @@ class DataFrameOriginal : public Object {
                 fill_row(i, row);
                 r.accept(row);
             }
+            add_self_to_kv_();
         }
 
         /** Visit rows in order */
@@ -626,13 +632,16 @@ class DataFrame: public DataFrameOriginal{
             buf_pointer += sizeof(size_t);
 
             DataFrame* df = new DataFrame(schema, *k, kvs);
+            Column* new_col;
             for (size_t i = 0; i < num_cols; i++) {
-                df->add_column(Column::deserialize(buf_pointer, kvs));
+                new_col = Column::deserialize(buf_pointer, kvs);
+                df->add_column(new_col);
                 buf_pointer += df->cols_[i]->serial_buf_size();
             }
 
             df->num_cols_owned_ = df->ncols();
 
+            delete k;
             return df;
         }
 };

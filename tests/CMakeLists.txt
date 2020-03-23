@@ -41,9 +41,6 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
                  EXCLUDE_FROM_ALL
                  )
 
-add_executable(test_dataframe test_suite.cpp)
-target_link_libraries(test_dataframe gtest)
-
-# add_executable(test_sorer test_sorer.cpp)
-# add_executable(test_map test_map.cpp)
-# target_link_libraries (test_map ${CMAKE_THREAD_LIBS_INIT})
+add_executable(test_suite test_suite.cpp)
+target_link_libraries(test_suite gtest)
+target_link_libraries (test_suite ${CMAKE_THREAD_LIBS_INIT})

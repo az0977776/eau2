@@ -17,9 +17,9 @@ To setup the system, the registration server must first be started. Clients (KV 
 This layer provides abstractions like the distributed dataframe and arrays. 
 
 ### Distributed DataFrame and Column
-A DataFrame represents multiple columns of data that each hold a specific type (`String`, `double`, `int`, `bool`). A column holds chunks that each hold actual values. A dataframe object does not actually hold the values directly; there are two layers of indirection needed when accessing a value inside a dataframe. 
+A DataFrame represents multiple columns of data that each hold a specific type (`String`, `double`, `int`, `bool`). A column holds chunks that each hold actual values. A dataframe object does not actually hold the values in the columns directly. There is a lookup process when accessing data inside the dataframe.
 
-A dataframe holds keys to its columns and a column holds keys to its chunks. When accessing a value inside a dataframe, there will be two key-value store lookups. The first lookup is getting the column from the key-value store using the column key and the second lookup is getting the chunk from the key-value store using the chunk key. Then there is a final access to get the value in the chunk.
+A dataframe can hold multiple columns and each column holds keys to its chunks that are stored within the key-value store. When accessing a value inside a dataframe, the dataframe finds the correct column and finds the correct chunk inside that column. Then, the dataframe looks for the chunk in the key-value store by using the key for the chunk and gets the value it wants from that chunk.
 
 ## Application Layer
 
@@ -35,10 +35,10 @@ A `Server` class handles registraion of `Client` objects. It holds a directory o
 A `Client` class holds connections to all other clients on the network. The client registers with the registration server on startup and discovers the other clients with the help of the server.
 
 ## Key
-A `Key` object is used as key that is provided to a K/V store. A `Key` object contains a byte array and a node index where the value associated with this byte array key is stored.
+A `Key` object is used as key that is provided to a K/V store. A `Key` object contains a `String` object and a node index where the value associated with this `Key` is stored.
 
 ## Value
-A `Value` object is what a `Key` object is associated with. It holds a `char*` byte array of serialized data.
+A `Value` object is what a `Key` object is associated with. It holds a `char*` byte array of serialized data and a `size_t` representing the size of the data.
 
 ## KeyValueStore
 The `KeyValueStore` class manages associations between `Key` objects and `Value` objects. A `KeyValueStore` on one process knows about `KeyValueStore` objects on other processes and can access `Value` objects on other processes. It is also possible to put `Value` objects into `KeyValueStore` objects on other processes. `KeyValueStore` objects each hold a `Client` object that is used for communication with other `KeyValueStore` objects.
@@ -76,6 +76,9 @@ The `DataFrame` class holds `Key` objects that are associated with `Value` objec
 The `Application` class handles interactions with `DataFrame` objects using the `KeyValueStore`. The application is allowed to create `DataFrame` objects, store `DataFrame` objects in the `KeyValueStore` and retreive `DataFrame` objects from the `KeyValueStore`.
 
 # Use cases
+* The user starts several applications on different devices on the same network. The user of the first application would create a dataframe and then all other applications would be able to read the data. Any other user could create DataFrames and share them using the KVStore. 
+* A User would create their own subclass of Application and override the `run_()` method to get their own code to run. The user's application has access to the KVStore to get and put dataframes. The user's code must use Keys to find the DataFrames, which means the node index of the DataFrame is known.
+* Below are some examples of user applications:
 ```cpp
 class Demo : public Application {
 public:
@@ -148,12 +151,14 @@ What the team has:
 - Unit tests for existing components: DataFrames and Sorer
 - Networking protocol
 - Manually tested Networking code
-
-What needs to be done:
 - Ability to serialize and deserialize dataframes
 - Create a Key/Value Store class
 - Create an application class
+
+What needs to be done:
 - Create a Distributed DataFrame that can be stored across multiple nodes
+- Distribute the Key/Value Store via the network
+- Debug memory management
 
 
 

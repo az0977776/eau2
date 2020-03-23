@@ -160,6 +160,13 @@ class Column : public Object {
             delete chunk_keys_;
         }
 
+        void print_chunk_keys() {
+            printf("Chunk keys for Column: %s\n", col_name_->c_str());
+            for (size_t i = 0; i < chunk_keys_->size(); i++) {
+                printf("   %s\n", chunk_keys_->get(i)->key_->c_str());
+            }
+        }
+
         char* generate_chunk_name(size_t chunk_idx) {
             size_t col_name_len = col_name_->size();
             char* ret = new char[col_name_len + 3 + (sizeof(size_t) * 2)];
@@ -290,7 +297,6 @@ class BoolColumn : public Column {
 
                 Key* k = new Key(0, new_chunk_key);
                 Value v(CHUNK_SIZE);
-                v.set_zero();
                 kv_->put(*k, v);
 
                 chunk_keys_->push_back(k);
@@ -720,17 +726,26 @@ Column* Column::deserialize(const char* buf, KVStore* kvs) {
         buf_pointer += keys->get(i)->serial_buf_size();
     }
 
+    Column* ret = nullptr;
+
     switch (type) {
         case BOOL:
-            return new BoolColumn(len, keys, name, kvs);
+            ret = new BoolColumn(len, keys, name, kvs);
+            break;
         case INT:
-            return new IntColumn(len, keys, name, kvs);
+            ret = new IntColumn(len, keys, name, kvs);
+            break;
         case DOUBLE:
-            return new DoubleColumn(len, keys, name, kvs);
+            ret = new DoubleColumn(len, keys, name, kvs);
+            break;
         case STRING:
-            return new StringColumn(len, keys, name, kvs);
+            ret = new StringColumn(len, keys, name, kvs);
+            break;
         default:
             Sys::fail("Column:deserialize, invalid type of column");
-            return nullptr;
+            break;
     }
+
+    delete name;  // was cloned when creating the column
+    return ret;
 }

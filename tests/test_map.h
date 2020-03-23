@@ -1,4 +1,6 @@
 //lang:CwC
+#pragma once
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -56,9 +58,9 @@ class Fibonacci : public Rower {
         }
 };
 
-int main() {
-
-    SOR sorer("../data/data.sor");
+void run_map_tests() {
+    KVStore kvs;
+    SOR sorer("../data/data.sor", &kvs);
 
     DataFrame* df = sorer.read();
     
@@ -69,6 +71,5 @@ int main() {
     delete df;
 
     printf("OK: test_map\n");
-    return 0;
 }
 

@@ -45,6 +45,10 @@ class Bucket : public Array<Object> {
                 }
             }
 
+            if (val == nullptr) {
+                return nullptr;
+            }
+
             // shift all remaining values left two
             for (size_t i = idx; i < len_ - 2; i++) {
                 values_[i] = values_[i+2];
@@ -88,10 +92,9 @@ class Map : public Object {
     public:
         Bucket **buckets_;
         // the ith key in the keys_ array corresponds with the ith value in the values_ array
-        Array<Key> *keys_;
-        Array<Value> *values_;
         // current number of buckets
         size_t num_buckets_;
+        size_t size_;
 
         /* The constructor*/
         Map() { 
@@ -100,8 +103,7 @@ class Map : public Object {
             for (size_t i = 0; i < num_buckets_; i++) {
                 buckets_[i] = new Bucket();
             }
-            keys_ = new Array<Key>();
-            values_ = new Array<Value>();
+            size_ = 0;
         }
 
         /* The destructor*/
@@ -110,8 +112,6 @@ class Map : public Object {
                 delete buckets_[i];
             }
             delete[] buckets_;
-            delete keys_;
-            delete values_;
         }
 
         /**
@@ -119,7 +119,7 @@ class Map : public Object {
         * @return the size of the map
         */
         size_t size() {
-            return keys_->size();
+            return size_;
         }
 
         /**
@@ -135,13 +135,8 @@ class Map : public Object {
                 // key does not exist yet
                 check_rehash_();
                 h = key->hash() % num_buckets_;
-                keys_->push(key);
-                values_->push(value);
-            } else {
-                // key already exists so just replace the value
-                // it is known that 0 <= keys_->indexOf(key) < size()
-                values_->set(keys_->indexOf(key), value);
-            }
+                size_++;
+            } 
             buckets_[h]->add_kvpair(key, value);
         }
 
@@ -152,21 +147,6 @@ class Map : public Object {
             for (size_t i = 0; i < num_buckets_; i++) {
                 buckets_[i]->clear();
             }
-            keys_->clear();
-            values_->clear();
-        }
-
-        /**
-        * Returns a copy of the Map
-        * @return the copy of this map
-        */
-        Map* copy(){
-            Map *m0 = new Map();
-            for (size_t i = 0; i < size(); i++) {
-                Key* key = keys_->get(i);
-                m0->add(key, get(key));
-            }
-            return m0;
         }
 
         /**
@@ -176,21 +156,8 @@ class Map : public Object {
         */
         Value* get(Key* key) {
             size_t h = key->hash() % num_buckets_;
+            // printf("h = %zu, num_buckets = %zu\n", h, num_buckets_);
             return dynamic_cast<Value*>(buckets_[h]->get_val(key));
-        }
-
-        /**
-        * Returns the Map's keys.
-        */
-        Key** keys() {
-            return keys_->get_all();
-        }
-
-        /**
-        * Returns all the Map's values
-        */
-        Value** values() {
-            return values_->get_all();
         }
 
         /**
@@ -201,54 +168,32 @@ class Map : public Object {
         Value* pop_item(Key* key) {
             size_t h = key->hash() % num_buckets_;
             Value *ret = dynamic_cast<Value*>(buckets_[h]->remove_kvpair(key));
-            if (ret == nullptr) {
-                return ret;
-            }
-            int idx = keys_->indexOf(key);
-            if (idx < 0) {
-                return nullptr;
-            }
-            keys_->remove(idx);
-            values_->remove(idx);
             return ret;
         }
 
-    /**
-        * Is this object equal to that object?
-        * @param o is the object to compare equality to.
-        * @return	whether this object is equal to that object.
-        */
-        virtual bool equals(Object* o) {
-            Map* other = dynamic_cast<Map*>(o);
-            if (other == nullptr || other->size() != size()) {
-                return false;
-            }
-
-            // check that all key value pairs are equal
-            for (size_t i = 0; i < size(); i++) {
-                Key *key = keys_->get(i);
-                if (!get(key)->equals(other->get(key))) {
-                    return false;
+        Key** keys() {
+            Bucket* bucket = nullptr;
+            Key** ret = new Key*[size_];
+            size_t counter = 0;
+            for (size_t i = 0; i < num_buckets_; i++) {
+                bucket = buckets_[i];
+                for (size_t j = 0; j < bucket->size(); j+=2) {
+                    ret[counter++] = dynamic_cast<Key*>(bucket->get(j));  // this is the key                      
                 }
             }
-            return true;
+            return ret;
         }
 
-        /**
-        * Calculate this object's hash.
-        * @return a natural number of a hash for this object.
-        */
-        virtual size_t hash() {
-            size_t ret = 0;
-            Key** k = keys();
-            Value** v = values();
-            for (size_t i = 0; i <size(); i++) {
-                ret = ret << 6;
-                ret ^= k[i]->hash();
-                ret ^= v[i]->hash();
+        Value** values() {
+            Bucket* bucket = nullptr;
+            Value** ret = new Value*[size_];
+            size_t counter = 0;
+            for (size_t i = 0; i < num_buckets_; i++) {
+                bucket = buckets_[i];
+                for (size_t j = 1; j < bucket->size(); j+=2) {
+                    ret[counter++] = dynamic_cast<Value*>(bucket->get(j));  // this is the key                      
+                }
             }
-            delete[] k;
-            delete[] v;
             return ret;
         }
 
@@ -256,31 +201,32 @@ class Map : public Object {
         // should happen when load factor (#elements/#buckets) > 0.75
         virtual void check_rehash_() {
             if (size() * 1.0 / num_buckets_ > 0.75) {
-                // delete the current list of buckets
+                size_t h = 0;
+                size_t old_num_buckets = num_buckets_;
+                num_buckets_ *= 2;
+                
+                Bucket** temp_buckets = new Bucket*[num_buckets_];
                 for (size_t i = 0; i < num_buckets_; i++) {
+                    temp_buckets[i] = new Bucket();
+                }
+
+                for (size_t i = 0; i < old_num_buckets; i++) {
+                    for (size_t j = 0; j < buckets_[i]->size(); j+=2) {
+                        Object* k = buckets_[i]->get(j);  // this is the key
+                        Object* v = buckets_[i]->get(j+1);  // this is the value
+
+                        h = k->hash() % num_buckets_;
+                        temp_buckets[h]->add_kvpair(k, v);                        
+                    }
+                }
+
+                // delete the current list of buckets
+                for (size_t i = 0; i < old_num_buckets; i++) {
                     delete buckets_[i];
                 }
                 delete[] buckets_;
-                num_buckets_ *= 2;
-                // recreate the list of buckets, but bigger
-                buckets_ = new Bucket*[num_buckets_];
-                for (size_t i = 0; i < num_buckets_; i++) {
-                    buckets_[i] = new Bucket();
-                }
-
-                Array<Key>* keys_temp = keys_;
-                Array<Value>* values_temp = values_;
-
-                keys_ = new Array<Key>();
-                values_ = new Array<Value>();
-
-                // adds the keys and values into the new list
-                for (size_t i = 0; i < keys_temp->size(); i++) {
-                    add(keys_temp->get(i), values_temp->get(i));
-                }
-
-                delete keys_temp;
-                delete values_temp;
+                
+                buckets_ = temp_buckets;
             }
     }
 };
