@@ -17,5 +17,5 @@ milestone2:
 
 clean:
 	-rm -rf tests/CMakeCache.txt
-	-rm tests/test_dataframe
-	-rm tests/test_sorer
+	-rm tests/test_suite
+	-rm tests/milestone2
