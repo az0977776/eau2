@@ -87,6 +87,7 @@ class Value : public Object {
         Value(size_t bytes) {
             bytes_ = bytes;
             val_ = new char[bytes_];
+            memset(val_, 0, bytes); // to fix valgrind error
         }
 
         ~Value() {

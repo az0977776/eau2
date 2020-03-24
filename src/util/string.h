@@ -95,7 +95,7 @@ class String : public Object {
     MutableString(char const* cstr, size_t len) : String(cstr, len) {  }
     /** Builds a string from a char*, steal must be true, we do not copy!
      *  cstr must be allocated for len+1 and must be zero terminated. */
-   MutableString(bool steal, char* cstr, size_t len) : String(steal, cstr, len) { }
+    MutableString(bool steal, char* cstr, size_t len) : String(steal, cstr, len) { }
 
     MutableString(char const* cstr) : String(cstr, strlen(cstr)) {}
 
@@ -107,7 +107,7 @@ class String : public Object {
 
     // takes ownership of the passed in string without copying
     void set(char* cstr) {
-        delete cstr_;
+        delete[] cstr_;
         cstr_ = cstr;
         size_ = strlen(cstr);
     }
