@@ -75,7 +75,7 @@ class Bucket : public Array<Object> {
         // returns nullptr if not found
         Object* get_val(Object* k) {
             for (size_t i = 0; i < len_; i+=2) {
-                if (k->equals(values_[i])) {
+                if (values_[i]->equals(k)) {
                     return values_[i+1];
                 }
             }
@@ -98,7 +98,7 @@ class Map : public Object {
 
         /* The constructor*/
         Map() { 
-            num_buckets_ = 128;
+            num_buckets_ = 1024;
             buckets_ = new Bucket*[num_buckets_];
             for (size_t i = 0; i < num_buckets_; i++) {
                 buckets_[i] = new Bucket();
@@ -141,22 +141,12 @@ class Map : public Object {
         }
 
         /**
-        * Removes all the elements from the Map
-        */
-        void clear() {
-            for (size_t i = 0; i < num_buckets_; i++) {
-                buckets_[i]->clear();
-            }
-        }
-
-        /**
         * Returns the value of the specified key
         * @param key the key to get the value from
         * @return the value associated with the key
         */
         Value* get(Key* key) {
             size_t h = key->hash() % num_buckets_;
-            // printf("h = %zu, num_buckets = %zu\n", h, num_buckets_);
             return dynamic_cast<Value*>(buckets_[h]->get_val(key));
         }
 
@@ -203,20 +193,20 @@ class Map : public Object {
             if (size() * 1.0 / num_buckets_ > 0.75) {
                 size_t h = 0;
                 size_t old_num_buckets = num_buckets_;
-                num_buckets_ *= 2;
+                size_t new_num_buckets = 2 * num_buckets_;
                 
-                Bucket** temp_buckets = new Bucket*[num_buckets_];
-                for (size_t i = 0; i < num_buckets_; i++) {
-                    temp_buckets[i] = new Bucket();
+                Bucket** new_buckets = new Bucket*[new_num_buckets];
+                for (size_t i = 0; i < new_num_buckets; i++) {
+                    new_buckets[i] = new Bucket();
                 }
 
                 for (size_t i = 0; i < old_num_buckets; i++) {
                     for (size_t j = 0; j < buckets_[i]->size(); j+=2) {
-                        Object* k = buckets_[i]->get(j);  // this is the key
-                        Object* v = buckets_[i]->get(j+1);  // this is the value
+                        Key* k = dynamic_cast<Key*>(buckets_[i]->get(j));  // this is the key
+                        Value* v = dynamic_cast<Value*>(buckets_[i]->get(j+1));  // this is the value
 
-                        h = k->hash() % num_buckets_;
-                        temp_buckets[h]->add_kvpair(k, v);                        
+                        h = k->hash() % new_num_buckets;
+                        new_buckets[h]->add_kvpair(k, v);                        
                     }
                 }
 
@@ -226,7 +216,8 @@ class Map : public Object {
                 }
                 delete[] buckets_;
                 
-                buckets_ = temp_buckets;
+                buckets_ = new_buckets;
+                num_buckets_ = new_num_buckets;
             }
     }
 };

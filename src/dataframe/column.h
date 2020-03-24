@@ -300,16 +300,19 @@ class BoolColumn : public Column {
                 kv_->put(*k, v);
 
                 chunk_keys_->push_back(k);
+
+                delete[] new_chunk_key;
             }
         }
 
         virtual void push_back(bool val) {
             check_and_reallocate_();
+            bool owned = false;
             size_t chunk_idx = len_ / CHUNK_SIZE;
             size_t item_idx = len_ / (CHUNK_SIZE / sizeof(size_t));
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
-            Value* value = kv_->get(*chunk_key);
+            Value* value = kv_->get(*chunk_key, owned);
             char* v = value->get();
 
             size_t buf = 0;
@@ -327,25 +330,30 @@ class BoolColumn : public Column {
             kv_->put(*chunk_key, new_value);
 
             len_++;
-            delete value;
+            if (owned){
+                delete value;
+            }
         }
         
         // gets the bool at the index idx
         // if idx is out of bounds, exit
         bool get(size_t idx) {
             abort_if_not(idx < size(), "BoolColumn.get(): out of bounds");
+            bool owned = false;
             size_t chunk_idx = idx / CHUNK_SIZE;
             size_t item_idx = idx / (CHUNK_SIZE / sizeof(size_t));
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
-            Value* value = kv_->get(*chunk_key);
+            Value* value = kv_->get(*chunk_key, owned);
             char* v = value->get();
             size_t buf;
             memcpy(&buf, v + item_idx * sizeof(size_t), sizeof(size_t));
             size_t bit_idx = idx % (sizeof(size_t) * 8); // number of bits in size_t
 
             bool ret = (buf >> bit_idx) & 1;
-            delete value;
+            if (owned) {
+                delete value;
+            }
             return ret;
         }
 
@@ -355,12 +363,12 @@ class BoolColumn : public Column {
         /** Set value at idx. An out of bound idx is undefined.  */
         void set(size_t idx, bool val) {
             abort_if_not(idx < size(), "BoolColumn.set(): out of bounds");
-
+            bool owned = false;
             size_t chunk_idx = idx / CHUNK_SIZE;
             size_t item_idx = idx / (CHUNK_SIZE / sizeof(size_t));
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
-            Value* value = kv_->get(*chunk_key);
+            Value* value = kv_->get(*chunk_key, owned);
             char* v = value->get();
             size_t buf;
             memcpy(&buf, v + item_idx * sizeof(size_t), sizeof(size_t));
@@ -376,7 +384,9 @@ class BoolColumn : public Column {
             Value new_value(CHUNK_SIZE, v);
             kv_->put(*chunk_key, new_value);
 
-            delete value;
+            if (owned) {
+                delete value;
+            }
         }
 
         char get_type_() {
@@ -412,15 +422,20 @@ class IntColumn : public Column {
         // if idx is out of bounds, exit
         int get(size_t idx) {
             abort_if_not(idx < size(), "IntColumn.get(): out of bounds");
+            bool owned = false;
             size_t chunk_idx = idx / CHUNK_SIZE;
             size_t item_idx = idx % CHUNK_SIZE;
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
-            Value* val = kv_->get(*chunk_key);
+            Value* val = kv_->get(*chunk_key, owned);
             char* v = val->get();
             int rv = 0;
             memcpy(&rv, v + item_idx * sizeof(int), sizeof(int));
-            delete val;
+
+            if (owned) {
+                delete val;
+            }
+
             return rv;
         }
 
@@ -435,43 +450,51 @@ class IntColumn : public Column {
 
                 char* new_chunk_key = generate_chunk_name(chunk_idx);
                 Key* k = new Key(0, new_chunk_key);
-                Value v(0);
+                Value v(CHUNK_SIZE * sizeof(int));
                 kv_->put(*k, v);
 
                 chunk_keys_->push_back(k);
+
+                delete[] new_chunk_key;
             }
         }
 
         virtual void push_back(int val) {
             check_and_reallocate_();
+            bool owned = false;
             size_t chunk_idx = len_ / CHUNK_SIZE;
             size_t item_idx = len_ % CHUNK_SIZE;
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
-            Value* value = kv_->get(*chunk_key);
+            Value* value = kv_->get(*chunk_key, owned);
             char* v = value->get();
             memcpy(v + item_idx * sizeof(int), &val, sizeof(int));
             Value new_value(CHUNK_SIZE * sizeof(int), v);
             kv_->put(*chunk_key, new_value);
 
             len_++;
-            delete value;
+            if (owned) {
+                delete value;
+            }
         }
 
         /** Set value at idx. An out of bound idx is undefined.  */
         void set(size_t idx, int val) {
             abort_if_not(idx < size(), "IntColumn.set(): Index out of bounds");
+            bool owned = false;
             size_t chunk_idx = idx / CHUNK_SIZE;
             size_t item_idx = idx % CHUNK_SIZE;
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
-            Value* v = kv_->get(*chunk_key);
+            Value* v = kv_->get(*chunk_key, owned);
             char* val_buf = v->get();
             memcpy(val_buf + item_idx * sizeof(int), &val, sizeof(int));
             Value new_value(CHUNK_SIZE * sizeof(int), val_buf);
             kv_->put(*chunk_key, new_value);
 
-            delete v;
+            if (owned) {
+                delete v;
+            }
         }
 
         char get_type_() {
@@ -511,10 +534,12 @@ class DoubleColumn : public Column {
                 char* new_chunk_key = generate_chunk_name(chunk_idx);
 
                 Key* k = new Key(0, new_chunk_key);
-                Value v(0);
+                Value v(CHUNK_SIZE * sizeof(double));
                 kv_->put(*k, v);
 
                 chunk_keys_->push_back(k);
+
+                delete[] new_chunk_key;
             }
         }
         
@@ -522,15 +547,19 @@ class DoubleColumn : public Column {
         // if idx is out of bounds, exit
         double get(size_t idx) {
             abort_if_not(idx < size(), "DoubleColumn.get(): index out of bounds");
+            bool owned = true;
             size_t chunk_idx = idx / CHUNK_SIZE;
             size_t item_idx = idx % CHUNK_SIZE;
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
-            Value* val = kv_->get(*chunk_key);
+            Value* val = kv_->get(*chunk_key, owned);
             char* v = val->get();
             double rv = 0;
             memcpy(&rv, v + item_idx * sizeof(double), sizeof(double));
-            delete val;
+
+            if (owned) {
+                delete val;
+            }
             return rv;
         }
 
@@ -540,34 +569,40 @@ class DoubleColumn : public Column {
 
         virtual void push_back(double val) {
             check_and_reallocate_();
+            bool owned = false;
             size_t chunk_idx = len_ / CHUNK_SIZE;
             size_t item_idx = len_ % CHUNK_SIZE;
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
-            Value* value = kv_->get(*chunk_key);
+            Value* value = kv_->get(*chunk_key, owned);
             char* v = value->get();
             memcpy(v + item_idx * sizeof(double), &val, sizeof(double));
             Value new_value(CHUNK_SIZE * sizeof(double), v);
             kv_->put(*chunk_key, new_value);
 
             len_++;
-            delete value;
+            if (owned) {
+                delete value;
+            }
         }
 
         /** Set value at idx. An out of bound idx is undefined.  */
         void set(size_t idx, double val) {
             abort_if_not(idx < size(), "DoubleColumne.set(): Index out of bounds");
+            bool owned = false;
             size_t chunk_idx = idx / CHUNK_SIZE;
             size_t item_idx = idx % CHUNK_SIZE;
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
-            Value* v = kv_->get(*chunk_key);
+            Value* v = kv_->get(*chunk_key, owned);
             char* val_buf = v->get();
             memcpy(val_buf + item_idx * sizeof(double), &val, sizeof(double));
             Value new_value(CHUNK_SIZE * sizeof(double), val_buf);
             kv_->put(*chunk_key, new_value);
-
-            delete v;
+            
+            if (owned) {
+                delete v;
+            }
         }
 
         char get_type_() {
@@ -621,6 +656,8 @@ class StringColumn : public Column {
                 kv_->put(*k, v);
 
                 chunk_keys_->push_back(k);
+
+                delete[] new_chunk_key;
             }
         }
         
@@ -628,10 +665,11 @@ class StringColumn : public Column {
         // if idx is out of bounds, exit
         String* get(size_t idx) {
             abort_if_not(idx < size(), "StringColumn.get(): index out of bounds");
+            bool owned = false;
             size_t chunk_idx = idx / CHUNK_SIZE;
             size_t item_idx = idx % CHUNK_SIZE;
             Key* chunk_key = chunk_keys_->get(chunk_idx);
-            Value* v = kv_->get(*chunk_key);
+            Value* v = kv_->get(*chunk_key, owned);
             char* val_buf = v->get();
 
             for (size_t i = 0; i < item_idx; i++) {
@@ -639,18 +677,21 @@ class StringColumn : public Column {
             }
 
             String* ret = new String(val_buf);
-            delete v;
+            if (owned) {
+                delete v;
+            }
             return ret;
         }
                 
         virtual void push_back(String* val) {
             abort_if_not(val != nullptr, "StringColumn.push_back(): val is nullptr");
             check_and_reallocate_();
+            bool owned = false;
 
             size_t chunk_idx = len_ / CHUNK_SIZE;
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
-            Value* v = kv_->get(*chunk_key);
+            Value* v = kv_->get(*chunk_key, owned);
             Value new_value(v->size() + val->size() + 1);
             char* val_buf = new_value.get();
 
@@ -661,7 +702,9 @@ class StringColumn : public Column {
             memcpy(val_buf + v->size(), val->c_str(), val->size() + 1);
 
             kv_->put(*chunk_key, new_value);
-            delete v;
+            if (owned) {
+                delete v;
+            }
             len_++;
         }
 
@@ -669,12 +712,13 @@ class StringColumn : public Column {
         void set(size_t idx, String* val) {
             abort_if_not(idx < size(), "StringColumn.set(): index out of bounds");
             abort_if_not(val != nullptr, "StringColumn.set(): val is nullptr");
+            bool owned = false; 
 
             size_t chunk_idx = idx / CHUNK_SIZE;
             size_t item_idx = idx % CHUNK_SIZE;
             Key* chunk_key = chunk_keys_->get(chunk_idx);
 
-            Value* v = kv_->get(*chunk_key);
+            Value* v = kv_->get(*chunk_key, owned);
             char* val_buf = v->get();
             
             size_t byte_count = 0;
@@ -695,7 +739,9 @@ class StringColumn : public Column {
 
             kv_->put(*chunk_key, new_value);
 
-            delete v;
+            if (owned) {
+                delete v;
+            }
         }
 
         char get_type_() {

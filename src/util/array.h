@@ -48,15 +48,6 @@ class Array : public Object{
             }
         }
 
-        // returns all values in array
-        virtual T** get_all() {
-            T **ret = new T*[len_];
-            for (size_t i = 0; i < len_; i++) {
-                ret[i] = values_[i];
-            }
-            return ret;
-        }
-
         // return the object at the index, returns nullptr if the index > size
         virtual T* get(size_t index){
             if (index > len_) {
@@ -70,21 +61,6 @@ class Array : public Object{
             check_reallocate_();
             values_[len_] = obj;  // not copying on add ...
             len_++;
-        }
-
-        //  sets the element at index i to the new object, pushes object onto end of array if i > size
-        virtual void set(size_t i, T* obj) {
-            if (i < len_) {
-                // NOTE: user must delete replaced object before set or still have reference to it. 
-                values_[i] = obj;  // do not copy on add
-            } else {
-                push(obj);
-            }
-        }
-
-        // deletes the contents of the array
-        virtual void clear() {
-            len_ = 0;
         }
 
         // returns the first index of a given object, or -1 if the array does not contain the object
@@ -101,42 +77,6 @@ class Array : public Object{
                 }
             }
             return -1;
-        }
-
-        // returns an array with elements of this array combined with elements of other
-        virtual Array* concat(Array* other) {
-            Array* ret = new Array(size() + other->size());
-            for (size_t i = 0; i < len_; i++) {
-                ret->push(values_[i]);
-            }
-            for (size_t i = 0; i < other->size(); i++) {
-                ret->push(other->get(i));
-            }
-            return ret;
-        }
-
-        // returns if this array has the same values at the other array
-        virtual bool equals(Object* other) {
-            Array* o = dynamic_cast<Array*>(other);
-            if (o == nullptr || o->size() != size()) {
-                return false;
-            }
-            for (size_t i = 0; i < len_; i++) {
-                if (!values_[i]->equals(o->get(i))) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        // returns the hash of the array
-        virtual size_t hash() {
-            size_t ret = 0;
-            for (size_t i = 0; i < len_; i++) {
-                ret = ret << 6;
-                ret ^= values_[i]->hash();
-            }
-            return ret;
         }
 
         // returns the size of the array

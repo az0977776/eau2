@@ -41,12 +41,22 @@ class KVStore : public Object {
             delete map_;
         }
 
+        // gets a value from the kv store using a key, returns clone of value
         Value* get(Key& key) {
             Value* v = map_->get(&key);
             if ( v == nullptr ) {
                 return nullptr;
             }
             return v->clone();
+        }
+
+        // gets a value from the kv store using a key, 
+        // owned boolean is set to false if the value does not need to be deleted
+        // owned boolean is set to true if the value needs to be deleted
+        Value* get(Key& key, bool& owned) {
+            owned = false;
+            Value* v = map_->get(&key);
+            return v;
         }
 
         Value* getAndWait(Key& key) {
@@ -58,10 +68,14 @@ class KVStore : public Object {
         }
         
         void put(Key& key, Value& value) {
-            Value* temp = get(key);
-            map_->add(key.clone(), value.clone());
-            if (temp != nullptr) {
-                delete temp;  // delete the old value
+            Value* temp = map_->get(&key);
+            if (temp == nullptr) {
+                // key does not exist in map
+                map_->add(key.clone(), value.clone());
+            } else if (!value.equals(temp)) {
+                // key already exists so add a clone of the key, and delete the previous value
+                map_->add(&key, value.clone());
+                delete temp;
             }
         }
 };
