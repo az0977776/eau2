@@ -5,6 +5,8 @@
 #include <cstring>
 #include <iostream>
 
+#include <errno.h>
+
 /** Helper class providing some C++ functionality and convenience
  *  functions. This class has no data, constructors, destructors or
  *  virtual functions. Inheriting from it is zero cost.
@@ -52,7 +54,7 @@ class Sys {
   // alternative to exit_if_not but takes in a const char* instead of a char*
   void abort_if_not(bool b, const char* c) {
       if (b) return;
-      std::cout << "Exit message: " << c << "\n";
+      std::cout << "Exit message: \"" << c << "\" -- errno: " << errno << "\n";
       exit(-1);
   }
 

@@ -4,7 +4,13 @@ build:
 	docker build -t cs4500:0.1 .
 	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test/tests && cmake . && make"
 
-test: build
+server:
+	g++ -pthread -O3 -Wall -pedantic -std=c++11 src/kvstore/server.cpp -o server && ./server
+
+client:
+	g++ -pthread -O3 -Wall -pedantic -std=c++11 src/kvstore/client.cpp -o client && ./client
+
+test: build 
 	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test/tests && ./test_suite"
 
 valgrind: 
@@ -19,3 +25,5 @@ clean:
 	-rm -rf tests/CMakeCache.txt
 	-rm tests/test_suite
 	-rm tests/milestone2
+
+.PHONY: server client

@@ -173,3 +173,31 @@ What needs to be done:
 
 
 // full name to look like "DF_NAME:0x123ADF:0x321FDA"
+
+
+        // network.send(node_idx, get_msg(char* keyname)) -> char*
+        // (Client 1) header
+        // (Client 2) ready
+        // (Client 1) key
+        // (Client 2) header (return msg) -- nullptr
+        // (Client 1) ready
+        // (Client 2) serialized value
+        // (Client 1) ack (good bye) 
+
+
+        // network.send(node_idx, get_and_wait(char* keyname)) -> char*
+        // (Client 1) header
+        // (Client 2) ready
+        // (Client 1) key
+        // wait ...  (timeout?)
+        // (Client 2) header (return msg)
+        // (Client 1) ready
+        // (Client 2) serialized value
+        // (Client 1) ack (good bye)         
+
+        
+        // network.send(node_idx, put(char* keyname, char* value)) -> char*
+        // (Client 1) header
+        // (Client 2) ready
+        // (Client 1) key,value   (key_size = sizeof(size_t) + strlen(rest) + 1, value_size = header.size - key_size)
+        // (Client 2) ack (good bye)

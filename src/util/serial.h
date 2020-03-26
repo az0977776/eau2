@@ -12,7 +12,11 @@ enum class MsgKind {
     SHUTDOWN,
     READY,
     ACK,
-    DEREGISTER
+    DEREGISTER,
+    GET,
+    GETANDWAIT,
+    PUT,
+    RESPONSE,
 };
 
 const size_t HEADER_SIZE = sizeof(MsgKind) + sizeof(size_t) + sizeof(sockaddr_in);
@@ -106,7 +110,7 @@ class Ack : public Header {
     public:
         Ack(sockaddr_in sender) : Header(MsgKind::ACK, 0, sender) { }
 
-        Ack(sockaddr_in sender, char* bytes) : Header(MsgKind::ACK, 0, sender) { }
+        Ack(sockaddr_in sender, size_t payload_size, char* bytes) : Header(MsgKind::ACK, payload_size, sender) { }
 
         ~Ack() { }
 };
@@ -115,7 +119,7 @@ class Ready : public Header {
     public:
         Ready(sockaddr_in sender) : Header(MsgKind::READY, 0, sender) { }
 
-        Ready(sockaddr_in sender, char* bytes) : Header(MsgKind::READY, 0, sender) { }
+        Ready(sockaddr_in sender, size_t payload_size, char* bytes) : Header(MsgKind::READY, payload_size, sender) { }
 
         ~Ready() { }
 };
@@ -124,7 +128,7 @@ class Shutdown : public Header {
     public:
         Shutdown(sockaddr_in sender) : Header(MsgKind::SHUTDOWN, 0, sender) { }
 
-        Shutdown(sockaddr_in sender, char* bytes) : Header(MsgKind::SHUTDOWN, 0, sender) { }
+        Shutdown(sockaddr_in sender, size_t payload_size, char* bytes) : Header(MsgKind::SHUTDOWN, payload_size, sender) { }
 
         ~Shutdown() { }
 };
@@ -137,8 +141,9 @@ class Register : public Header {
             client_ = client;
         }
 
-        Register(sockaddr_in sender, char* bytes) : Header(MsgKind::REGISTER, sizeof(sockaddr_in), sender) {
-            memcpy(&client_, bytes, sizeof(sockaddr_in));
+        Register(sockaddr_in sender, size_t payload_size, char* bytes) : Header(MsgKind::REGISTER, sizeof(sockaddr_in), sender) {
+            abort_if_not(payload_size == sizeof(sockaddr_in), "Register: payload size is incorrect");
+            memcpy(&client_, bytes, payload_size);
         }
 
         ~Register() {
@@ -163,8 +168,9 @@ class Deregister : public Header {
             client_ = client;
         }
 
-        Deregister(sockaddr_in sender, char* bytes) : Header(MsgKind::DEREGISTER, sizeof(sockaddr_in), sender) {
-            memcpy(&client_, bytes, sizeof(sockaddr_in));
+        Deregister(sockaddr_in sender, size_t payload_size, char* bytes) : Header(MsgKind::DEREGISTER, sizeof(sockaddr_in), sender) {
+            abort_if_not(payload_size == sizeof(sockaddr_in), "Deregister: payload size does not match");
+            memcpy(&client_, bytes, payload_size);
         }
 
         ~Deregister() {
@@ -193,11 +199,12 @@ class Directory : public Header {
             memcpy(clients_, clients, num_clients_ * sizeof(sockaddr_in));
         }
 
-        Directory(sockaddr_in sender, char* bytes) : Header(MsgKind::DIRECTORY, 0, sender) {
+        Directory(sockaddr_in sender, size_t payload_size, char* bytes) : Header(MsgKind::DIRECTORY, payload_size, sender) {
             memcpy(&num_clients_, bytes, sizeof(size_t));
             bytes += sizeof(size_t);
 
             payload_size_ = sizeof(size_t) + num_clients_ * sizeof(sockaddr_in);
+            abort_if_not(payload_size_ == payload_size, "Directory: payload size does not match");
 
             clients_ = new sockaddr_in[num_clients_];
             memcpy(clients_, bytes, num_clients_ * sizeof(sockaddr_in));
@@ -220,6 +227,25 @@ class Directory : public Header {
 
         size_t get_num_clients() {
             return num_clients_;
+        }
+
+        size_t index_of(const char* client_ip, unsigned short client_listen_port) {
+            // convert ip and port to sockaddr_in
+            struct sockaddr_in client;
+            client.sin_port = client_listen_port;
+            inet_pton(AF_INET, client_ip, &client.sin_addr);
+
+            for (size_t i = 0; i < num_clients_; i++) {
+                if (client.sin_addr.s_addr == clients_[i].sin_addr.s_addr && client.sin_port == clients_[i].sin_port) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        sockaddr_in* get(size_t idx) {
+            abort_if_not(idx < num_clients_, "Directory trying to get a node that does not exist");
+            return &(clients_[idx]);
         }
 
         // returns a string representing all registered clients
@@ -247,4 +273,45 @@ class Directory : public Header {
             return str_buff.get();
         }
 
+        Directory* clone() {
+            return new Directory(get_sender(), num_clients_, clients_);
+        }
+
 };
+
+class Get : public Message {
+    public:
+        Get(sockaddr_in sender, size_t payload_size, const char* payload) : Message(sender, payload_size, payload) {
+            kind_ = MsgKind::GET;
+        }
+
+        ~Get() { }
+};
+
+class GetAndWait : public Message {
+    public:
+        GetAndWait(sockaddr_in sender, size_t payload_size, const char* payload) : Message(sender, payload_size, payload) {
+            kind_ = MsgKind::GETANDWAIT;
+        }
+
+        ~GetAndWait() { }
+};
+
+class Put : public Message {
+    public:
+        Put(sockaddr_in sender, size_t payload_size, const char* payload) : Message(sender, payload_size, payload) {
+            kind_ = MsgKind::PUT;
+        }
+
+        ~Put() { }
+};
+
+class Response : public Message {
+    public:
+        Response(sockaddr_in sender, size_t payload_size, const char* payload) : Message(sender, payload_size, payload) {
+            kind_ = MsgKind::RESPONSE;
+        }
+
+        ~Response() { }
+};
+

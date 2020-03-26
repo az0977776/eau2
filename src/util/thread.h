@@ -21,6 +21,9 @@ public:
     /** Wait on this thread to terminate. */
     void join() { thread_.join(); }
 
+    /** don't need to wait for the thread with join */
+    void detach() { thread_.detach(); }
+
     /** Yield execution to another thread. */
     static void yield() { std::this_thread::yield(); }
 

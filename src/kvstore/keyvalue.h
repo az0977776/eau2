@@ -22,6 +22,10 @@ class Key : public Object {
         String* get_name() {
             return key_->clone();
         }
+
+        size_t get_index() {
+            return node_index_;
+        }
         
         bool equals(Object* other) {
             Key* k = dynamic_cast<Key*>(other);
@@ -78,15 +82,19 @@ class Value : public Object {
         char* val_;  // owned
         size_t bytes_;
 
-        Value(size_t bytes, const char* val) {
+        Value(size_t bytes, char* val, bool steal) {
             bytes_ = bytes;
-            val_ = new char[bytes];
-            memcpy(val_, val, bytes);
+            if (steal) {
+                val_ = val;
+            } else {
+                val_ = new char[bytes];
+                memcpy(val_, val, bytes);
+            }
         }
 
-        Value(size_t bytes) {
-            bytes_ = bytes;
-            val_ = new char[bytes_];
+        Value(size_t bytes, char* val) : Value(bytes, val, false) { }
+
+        Value(size_t bytes) : Value(bytes, new char[bytes], true) {
             memset(val_, 0, bytes); // to fix valgrind error
         }
 
