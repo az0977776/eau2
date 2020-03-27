@@ -25,5 +25,7 @@ clean:
 	-rm -rf tests/CMakeCache.txt
 	-rm tests/test_suite
 	-rm tests/milestone2
+	-rm server
+	-rm client
 
 .PHONY: server client
