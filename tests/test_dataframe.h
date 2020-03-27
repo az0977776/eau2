@@ -42,7 +42,7 @@ DataFrame* build_data_frame(int size, String& str, Key& key, KVStore& kvs) {
 void test_dataframe_constructor_by_schema() {
     Key key(0, "Some_key");
     Key key2(0, "Other_key");
-    KVStore kvs;
+    KVStore kvs(false);
     Schema schema1("IDSBB");
     Schema schema2("I");
 
@@ -78,7 +78,7 @@ TEST(testDataFrame, testDataFrameConstructorSchema) {
  */
 void test_dataframe_copy_constructor() {
     Key key(0, "Some_key");
-    KVStore kvs;
+    KVStore kvs(false);
     Key key_copy(0, "key_copy");
     int size = 10;
     String str("apple");
@@ -119,7 +119,7 @@ TEST(testDataFrame, testDataFrameCopyConstructor) {
  */
 void test_dataframe_get_schema() {
     Key key(0, "Some_key");
-    KVStore kvs;
+    KVStore kvs(false);
     Schema schema("IBDS");
     String col_name("column name");
 
@@ -144,7 +144,7 @@ TEST(testDataFrame, testDataFrameGetSchema) {
  */
 void test_dataframe_add_column() {
     Key key(0, "Some_key");
-    KVStore kvs;
+    KVStore kvs(false);
 
     String col_name1("col_name_1");
     String col_name2("col_name_2");
@@ -189,7 +189,7 @@ TEST(testDataFrame, testDataFrameAddColumn) {
  */
 void test_dataframe_get_values() {
     Key key(0, "Some_key");
-    KVStore kvs;
+    KVStore kvs(false);
     int size = 10;
     String s("apple");
     DataFrame* df = build_data_frame(size, s, key, kvs);
@@ -225,7 +225,7 @@ TEST(testDataFrame, testDataFrameGet) {
  */
 void test_dataframe_set_values() {
     Key key(0, "Some_key");
-    KVStore kvs;
+    KVStore kvs(false);
     int size = 10;
     String s("apple");
     String s2("orange");
@@ -278,7 +278,7 @@ TEST(testDataFrame, testDataFrameSet) {
  */
 void test_dataframe_get_col() {
     Key key(0, "Some_key");
-    KVStore kvs;
+    KVStore kvs(false);
     Schema schema("");
     DataFrame df(schema, key, &kvs);
     
@@ -321,7 +321,7 @@ TEST(testDataFrame, testDataFrameGetCol) {
  */
 void test_dataframe_fill_row() {
     Key key(0, "Some_key");
-    KVStore kvs;
+    KVStore kvs(false);
     int size = 10;
     String s("apple");
     DataFrame* df = build_data_frame(size, s, key, kvs);
@@ -372,7 +372,7 @@ class FilterOddRower : public Rower {
 
 void test_filter() {
     Key key(0, "Some_key");
-    KVStore kvs;
+    KVStore kvs(false);
     // creates a schema and adds a column with a name
     Schema s("IBDS");
     String stri("cow");
@@ -432,7 +432,7 @@ class Taxes : public Rower {
 
 void test_map() {
     Key key(0, "Some_key");
-    KVStore kvs;
+    KVStore kvs(false);
     // Creating a data frame with the right structure 
     Schema scm("IDBII");       // the schema
     DataFrame df(scm, key, &kvs);         // the data frame  
@@ -474,7 +474,7 @@ TEST(testDataFrame, testDataFrameMap) {
  */
 void test_dataframe_print() {
     Key key(0, "Some_key");
-    KVStore kvs;
+    KVStore kvs(false);
     char expected[256] =   "<1><0><0><\"apple with space\">\n" \
                             "<0><1><0.2><\"apple with space\">\n" \
                             "<1><2><0.4><\"apple with space\">\n" \
@@ -519,7 +519,7 @@ void test_dataframe_equals() {
     Key key3(0, "Some_key4");
     Key key4(0, "Some_key5");
     Key key5(0, "Some_key6");
-    KVStore kvs;
+    KVStore kvs(false);
     int size = 5;
     String s1("apple");
     String s2("orange");
@@ -567,7 +567,7 @@ TEST(testDataFrame, testDataFrameEquals) {
 
 void test_dataframe_serialize() {
     Key key(0, "Some_key");
-    KVStore kvs;
+    KVStore kvs(false);
     int size = 10;
     String s("apple");
     DataFrame* df = build_data_frame(size, s, key, kvs);

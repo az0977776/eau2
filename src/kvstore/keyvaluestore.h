@@ -23,14 +23,15 @@ class KVStoreMessageHandler : public MessageHandler {
     
         ~KVStoreMessageHandler() { }
 
-        Response* handle_message(String &sender, size_t data_len, char* data);
-        Response* handle_get(String &sender, size_t data_len, char* data);
-        Response* handle_get_and_wait(String &sender, size_t data_len, char* data);
-        Response* handle_put(String &sender, size_t data_len, char* data);
+        Response* handle_message(sockaddr_in server, size_t data_len, char* data);
+        Response* handle_get(sockaddr_in server, size_t data_len, char* data);
+        Response* handle_get_and_wait(sockaddr_in server, size_t data_len, char* data);
+        Response* handle_put(sockaddr_in server, size_t data_len, char* data);
 };
 
 class KVStore : public Object {
     public:
+        bool server_; // is this KVStore connected to the server
         size_t node_index_;
         // map of local key -> values
         Map *map_;
@@ -39,14 +40,21 @@ class KVStore : public Object {
         // network layer
         Client* client_;
 
-        KVStore() {
+        KVStore() : KVStore(true) { }
+
+        KVStore(bool server) {
             abort_if_not(pthread_mutex_init(&lock_, NULL) == 0, "KVStore: Failed to create mutex");
-            
             map_ = new Map();
+            server_ = server;
             
-            // create network
-            client_ = new Client(SERVER_IP, SERVER_IP, new KVStoreMessageHandler(this));
-            node_index_ = client_->get_index();
+            if (server_) {
+                // create network
+                client_ = new Client(SERVER_IP, SERVER_IP, new KVStoreMessageHandler(this));
+                node_index_ = client_->get_index();
+            } else {
+                client_ = nullptr;
+                node_index_ = 0;
+            }
         }
 
         ~KVStore() {
@@ -64,8 +72,10 @@ class KVStore : public Object {
             delete[] vals;
             delete map_;
 
-            delete client_->get_message_handler();
-            delete client_; // will wait for client listening thread
+            if (server_) {  
+                delete client_->get_message_handler();
+                delete client_; // will wait for client listening thread
+            }
 
             unlock_map();
             // destroy the lock
@@ -85,7 +95,11 @@ class KVStore : public Object {
         }
 
         sockaddr_in get_sender() {
-            return client_->get_sockaddr();
+            if (server_) {
+                return client_->get_sockaddr();
+            } else {
+                return { 0 }; 
+            }
         }
 
         // gets a value from the kv store using a key, returns clone of value
@@ -106,24 +120,28 @@ class KVStore : public Object {
         // owned boolean is set to false if the value does not need to be deleted
         // owned boolean is set to true if the value needs to be deleted
         Value* get(Key& key, bool& owned) {
+            Value* ret = nullptr;
             if (key.get_index() == node_index_) {
                 owned = false;
                 lock_map();
-                Value* ret = map_->get(&key);
+                ret = map_->get(&key);
                 unlock_map();
-                return ret;
-            } else {
+            } else if (server_) {
                 owned = true;
 
                 char* key_buf = key.serialize();
                 size_t return_len = 0;
                 char* returned_value = client_->get(key.get_index(), key.serial_buf_size(), key_buf, return_len);
                 
-                Value* v = new Value(return_len, returned_value, true); // stealing the char* returned_value
+                if (returned_value != nullptr) {
+                    ret = new Value(return_len, returned_value, true); // stealing the char* returned_value
+                }
                 
                 delete[] key_buf;
-                return v;
+            } else {
+                fail("KVStore.get(): Got a key to a different node while client was not running");
             }
+            return ret;
         }
 
         Value* getAndWait(Key& key) {
@@ -153,16 +171,19 @@ class KVStore : public Object {
                     sleep(1);
                 }
                 return val;
-            } else {
+            } else if (server_) {
                 owned = true;
                 char* key_buf = key.serialize();
                 size_t return_len = 0;
                 char* returned_value = client_->get_and_wait(key.get_index(), key.serial_buf_size(), key_buf, return_len);
-                
+
                 Value* v = new Value(return_len, returned_value, true); // stealing the char* returned_value
                 
                 delete[] key_buf;
                 return v;
+            } else {
+                fail("KVStore.getAndWait(): Got a key to a different node while client was not running");
+                return nullptr;
             }
         }
         
@@ -179,7 +200,7 @@ class KVStore : public Object {
                     delete temp;
                 }
                 unlock_map();
-            } else {
+            } else if (server_) {
                 size_t buf_len = key.serial_buf_size() + value.size();
                 char* buf = new char[buf_len];
                 key.serialize(buf);
@@ -187,6 +208,8 @@ class KVStore : public Object {
 
                 client_->put(key.get_index(), buf_len, buf);
                 delete[] buf;
+            } else {
+                fail("KVStore.put(): Got a key to a different node while client was not running");
             }
         }
 };
@@ -197,7 +220,7 @@ class KVStore : public Object {
 // handle a generic message coming from the given sender
 // return: the response the the given message.
 //          if respnse is nullptr then nothing is sent back.
-Response* KVStoreMessageHandler::handle_message(String &sender, size_t data_len, char* data) { 
+Response* KVStoreMessageHandler::handle_message(sockaddr_in server, size_t data_len, char* data) { 
     fail("KVStore got a undefined message");
     return nullptr;
 }
@@ -205,22 +228,27 @@ Response* KVStoreMessageHandler::handle_message(String &sender, size_t data_len,
 // handle a generic get coming from the given sender
 // return: the response the the given message.
 //          if respnse is nullptr then nothing is sent back.
-Response* KVStoreMessageHandler::handle_get(String &sender, size_t data_len, char* data) {
+Response* KVStoreMessageHandler::handle_get(sockaddr_in server, size_t data_len, char* data) {
     bool owned = false;
 
     Key* key = Key::deserialize(data);
     abort_if_not(key->get_index() == kvs_->node_index(), "KVStore got a GET request for the wrong node");
 
+    key->print();
+
     Value* v = kvs_->get(*key, owned);
     abort_if_not(!owned, "KVStore.handle_get(): Should not own the value");
 
+    if (v == nullptr) {
+        return nullptr;
+    }
     return new Response(kvs_->get_sender(), v->size(), v->get());
 }
 
 // handle a generic get and wait coming from the given sender
 // return: the response the the given message.
 //          if respnse is nullptr then nothing is sent back.
-Response* KVStoreMessageHandler::handle_get_and_wait(String &sender, size_t data_len, char* data) {
+Response* KVStoreMessageHandler::handle_get_and_wait(sockaddr_in server, size_t data_len, char* data) {
     bool owned = false;
 
     Key* key = Key::deserialize(data);
@@ -235,7 +263,9 @@ Response* KVStoreMessageHandler::handle_get_and_wait(String &sender, size_t data
 // handle a generic put coming from the given sender
 // return: the response the the given message.
 //          if respnse is nullptr then nothing is sent back.
-Response* KVStoreMessageHandler::handle_put(String &sender, size_t data_len, char* data) {
+Response* KVStoreMessageHandler::handle_put(sockaddr_in server, size_t data_len, char* data) {
+    print_byte(data, data_len);
+
     Key* key = Key::deserialize(data);
     abort_if_not(key->get_index() == kvs_->node_index(), "KVStore got a PUT request for the wrong node");
 
@@ -247,6 +277,3 @@ Response* KVStoreMessageHandler::handle_put(String &sender, size_t data_len, cha
 
     return nullptr;
 }
-
-
-

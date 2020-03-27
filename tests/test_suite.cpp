@@ -12,9 +12,9 @@
 
 
 int main(int argc, char **argv) {
-    //run_sorer_tests();
+    run_sorer_tests();
 
-    //run_map_tests();
+    run_map_tests();
 
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

@@ -59,7 +59,7 @@ class Fibonacci : public Rower {
 };
 
 void run_map_tests() {
-    KVStore kvs;
+    KVStore kvs(false);
     SOR sorer("../data/data.sor", &kvs);
 
     DataFrame* df = sorer.read();

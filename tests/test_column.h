@@ -13,7 +13,7 @@
  * Int column can push int on, and get them back. Also checks size and set.
  */
 void test_int_column() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     IntColumn *ic = new IntColumn(&s, &kvs);
     ASSERT_EQ(ic->size(), 0);
@@ -42,7 +42,7 @@ TEST(testColumn, testIntCol) {
  * Checks that a constructor with multiple inputs is possible.
  */
 void test_int_constructor() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     IntColumn ic(&s, &kvs, 5, -1024, 0, 1042, 33, -1);
 
@@ -69,7 +69,7 @@ TEST(testColumn, testIntColumnConstructor) {
  * The correct type is returned, 'I'
  */
 void test_int_get_type() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     IntColumn ic(&s, &kvs, 5, -1024, 0, 1042, 33, -1);
 
@@ -84,7 +84,7 @@ TEST(testColumn, testIntColumnGetType) {
  * This is specific to our implemention. 
  */
 void test_int_column_as_bool() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     IntColumn *ic = new IntColumn(&s, &kvs);
     ic->as_bool();
@@ -97,7 +97,7 @@ TEST(testColumn, testIntColExitOnFailAsBool) {
 }
 
 void test_int_column_as_double() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     IntColumn *ic = new IntColumn(&s, &kvs);
     ic->as_double();
@@ -110,7 +110,7 @@ TEST(testColumn, testIntColExitOnFailAsDouble) {
 }
 
 void test_int_column_as_string() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     IntColumn *ic = new IntColumn(&s, &kvs);
     ic->as_string();
@@ -128,7 +128,7 @@ TEST(testColumn, testIntColExitOnFailAsString) {
  * Doublecolumn can push double on, and get them back. Also checks size and set.
  */
 void test_double_column() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     DoubleColumn *dc = new DoubleColumn(&s, &kvs);
     ASSERT_EQ(dc->size(), 0);
@@ -154,7 +154,7 @@ TEST(testColumn, testDoubleCol) {
  * DoubleColumn returns the correct type.
  */
 void test_double_column_type() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     String s2("column name 2");
     DoubleColumn *dc = new DoubleColumn(&s, &kvs);
@@ -175,7 +175,7 @@ TEST(testColumn, testDoubleColType) {
  * DoubleColumn can be created with a variable number of arguments
  */
 void test_double_column_var_args() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     DoubleColumn *dc = new DoubleColumn(&s, &kvs, 6, -1234.5, 1.2, 0.0, 1.0, 0.00012345, 0.4553);
 
@@ -205,7 +205,7 @@ TEST(testColumn, testDoubleColVarArgsConstructor) {
  * StringColumn can push double on, and get them back. Also checks size and set.
  */
 void test_string_column() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     StringColumn *ic = new StringColumn(&s, &kvs);
     ASSERT_EQ(ic->size(), 0);
@@ -237,7 +237,7 @@ TEST(testColumn, testStringCol) {
  * StringColumn returns the correct type.
  */
 void test_string_column_type() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     String s2("foobar");
     StringColumn *sc = new StringColumn(&s, &kvs);
@@ -258,7 +258,7 @@ TEST(testColumn, testStringColType) {
  * StringColumn can be created with a variable number of arguments
  */
 void test_string_column_var_args() {
-    KVStore kvs;
+    KVStore kvs(false);
     String col_name("column name here");
     String s1("1");
     String s2("2");
@@ -290,7 +290,7 @@ TEST(testColumn, testStringColVarArgsConstructor) {
  * BoolColumn can push double on, and get them back. Also checks size and set.
  */
 void test_bool_column() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     BoolColumn *ic = new BoolColumn(&s, &kvs);
     ASSERT_EQ(ic->size(), 0);
@@ -333,7 +333,7 @@ TEST(testColumn, testBoolCol) {
  * BoolColumn returns the correct type.
  */
 void test_bool_column_type() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     String s2("column 2 name");
     BoolColumn *bc = new BoolColumn(&s, &kvs);
@@ -354,7 +354,7 @@ TEST(testColumn, testBoolColType) {
  * BoolColumn can be created with a variable number of arguments
  */
 void test_bool_column_var_args() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     BoolColumn *bc = new BoolColumn(&s, &kvs, 6, true, true, true, false, true, false);
 
@@ -383,7 +383,7 @@ TEST(testColumn, testBoolColVarArgsConstructor) {
  * unspecified behavior.
  */
 void test_bool_column_as_int() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     BoolColumn *bc = new BoolColumn(&s, &kvs);
     bc->as_int();
@@ -396,7 +396,7 @@ TEST(testColumn, testBoolColExitOnFailAsBool) {
 }
 
 void test_bool_column_as_double() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     BoolColumn *bc = new BoolColumn(&s, &kvs);
     bc->as_double();
@@ -409,7 +409,7 @@ TEST(testColumn, testBoolColExitOnFailAsDouble) {
 }
 
 void test_bool_column_as_string() {
-    KVStore kvs;
+    KVStore kvs(false);
     String s("column name here");
     BoolColumn *bc = new BoolColumn(&s, &kvs);
     bc->as_string();
@@ -422,7 +422,7 @@ TEST(testColumn, testBoolColExitOnFailAsString) {
 }
 
 void test_bool_column_serialize() {
-    KVStore kvs; 
+    KVStore kvs(false); 
     String s("foobar");
     BoolColumn *bc = new BoolColumn(&s, &kvs);
 
@@ -452,7 +452,7 @@ TEST(testColumn, testBoolColumnSerialize) {
 // This checks that the serial buf size is correct by checking that serialize does not write to it
 void test_bool_column_serial_buf_size() {
     char init = 'A';
-    KVStore kvs; 
+    KVStore kvs(false); 
     String s("foobar");
     BoolColumn bc(&s, &kvs);
 
@@ -492,7 +492,7 @@ TEST(testColumn, testBoolColumnSerialBufSize) {
 }
 
 void test_int_column_serialize() {
-    KVStore kvs; 
+    KVStore kvs(false); 
     String s("foobar");
     IntColumn *bc = new IntColumn(&s, &kvs);
 
@@ -521,7 +521,7 @@ TEST(testColumn, testIntColumnSerialize) {
 // This checks that the serial buf size is correct by checking that serialize does not write to it
 void test_int_column_serial_buf_size() {
     char init = 'A';
-    KVStore kvs; 
+    KVStore kvs(false); 
     String s("foobar");
     IntColumn ic(&s, &kvs);
 
@@ -560,7 +560,7 @@ TEST(testColumn, testIntColumnSerialBufSize) {
 }
 
 void test_double_column_serialize() {
-    KVStore kvs; 
+    KVStore kvs(false); 
     String s("foobar");
     DoubleColumn *bc = new DoubleColumn(&s, &kvs);
 
@@ -589,7 +589,7 @@ TEST(testColumn, testDoubleColumnSerialize) {
 // This checks that the serial buf size is correct by checking that serialize does not write to it
 void test_double_column_serial_buf_size() {
     char init = 'A';
-    KVStore kvs; 
+    KVStore kvs(false); 
     String s("foobar");
     DoubleColumn dc(&s, &kvs);
 
@@ -629,7 +629,7 @@ TEST(testColumn, testDoubleColumnSerialBufSize) {
 
 
 void test_string_column_serialize() {
-    KVStore kvs; 
+    KVStore kvs(false); 
     String s("foobar");
     String s0("abc");
     String s1("foo");
@@ -664,7 +664,7 @@ TEST(testColumn, testStringColumnSerialize) {
 // This checks that the serial buf size is correct by checking that serialize does not write to it
 void test_string_column_serial_buf_size() {
     char init = 'A';
-    KVStore kvs; 
+    KVStore kvs(false); 
     String s("foobar");
     String s0("abc");
     String s1("foo");

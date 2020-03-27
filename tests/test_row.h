@@ -179,11 +179,6 @@ void test_row_visit() {
 
     TestRowVisitFielder f(true, 1234, f1, &str2);
     row.visit(0, f);
-
-    // check that string equals with nullptr is workable
-    row.set(3, nullptr);
-    TestRowVisitFielder f2(true, 1234, f1, nullptr);
-    row.visit(0, f2);
 }
 
 TEST(submittedTest5, testRowVisit) {

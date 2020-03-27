@@ -167,9 +167,11 @@ class Column : public Object {
             }
         }
 
+        // colname:0x<hex_representation>
+        // each byte needs two characters to represent
         char* generate_chunk_name(size_t chunk_idx) {
             size_t col_name_len = col_name_->size();
-            char* ret = new char[col_name_len + 3 + (sizeof(size_t) * 2)];
+            char* ret = new char[col_name_len + 3 + (sizeof(size_t) * 2)]; 
             memcpy(ret, col_name_->c_str(), col_name_len);
             ret[col_name_len] = ':';
             sprintf(ret+col_name_len+1, "0x%X", (unsigned int)chunk_idx);

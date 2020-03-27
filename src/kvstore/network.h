@@ -31,28 +31,28 @@ class MessageHandler : public Object {
         // handle a genaric message coming from the given sender
         // return: the response the the given message.
         //          if respnse is nullptr then nothing is sent back.
-        virtual Response* handle_message(String &sender, size_t data_len, char* data) { 
+        virtual Response* handle_message(sockaddr_in server, size_t data_len, char* data) { 
             return nullptr;
         }
 
         // handle a genaric message coming from the given sender
         // return: the response the the given message.
         //          if respnse is nullptr then nothing is sent back.
-        virtual Response* handle_get(String &sender, size_t data_len, char* data) {
+        virtual Response* handle_get(sockaddr_in server, size_t data_len, char* data) {
             return nullptr;
         }
 
         // handle a genaric message coming from the given sender
         // return: the response the the given message.
         //          if respnse is nullptr then nothing is sent back.
-        virtual Response* handle_get_and_wait(String &sender, size_t data_len, char* data) {
+        virtual Response* handle_get_and_wait(sockaddr_in server, size_t data_len, char* data) {
             return nullptr;
         }
         
         // handle a genaric message coming from the given sender
         // return: the response the the given message.
         //          if respnse is nullptr then nothing is sent back.
-        virtual Response* handle_put(String &sender, size_t data_len, char* data) {
+        virtual Response* handle_put(sockaddr_in server, size_t data_len, char* data) {
             return nullptr;
         }
 };
@@ -139,9 +139,9 @@ class Network : public Object {
             // sending the header to the file descriptor
             abort_if_not(send_chars(fd, header.header_len(), header.get_header()), "Failed to send header");
 
-            size_t read_bytes = read(fd, buf, header.header_len());
-            // printf("Number of bytes returned for read: %zu, header_len = %zu\n", read_bytes, header.header_len());
-            abort_if_not(read_bytes == header.header_len(), "send_message().check_header: Did not read the correct numnber of bytes");
+            int read_bytes = read(fd, buf, header.header_len());
+            printf("Number of bytes returned for read: %d, header_len = %zu\n", read_bytes, header.header_len());
+            abort_if_not((size_t)read_bytes == header.header_len(), "send_message().check_header: Did not read the correct numnber of bytes");
             Header check_header(buf);
 
             // check that the returned header type
@@ -205,12 +205,10 @@ class Network : public Object {
             send_ready_(fd);
             char* payload = receive_payload_(fd, check_header.get_payload_size());
 
-            // deserialize the payload into a register message. Set up return value.
+            // deserialize the payload into a message. Set up return value.
             Header* rv = new T(check_header.get_sender(), check_header.get_payload_size(), payload);
             delete payload;
 
-            // Send an ack to close the connection
-            send_ack_(fd);
             return rv;
         }
 
@@ -352,8 +350,11 @@ void ConnectionThread::set_fd(int fd) {
 }
 
 void ConnectionThread::run() {
+    printf("connection thread starting\n");
     Header* message = network_->recieve_message(fd_);
+    printf("connection thread received message\n");
     Response* response = network_->handle_message(message);
+    printf("created a response for the received message\n");
     size_t return_msg_len;
 
     if (response != nullptr) {
@@ -362,6 +363,9 @@ void ConnectionThread::run() {
         abort_if_not(return_msg_len == 0, "Sent a response and got a buf back");
         delete response;
     }
+
+    network_->send_ack_(fd_);
+    printf("sending an ack\n");
 
     delete message;
     message = nullptr;
@@ -632,6 +636,8 @@ class Client : public Network {
             current_node_idx_ = current_dir_->index_of(client_ip, listening_port_);
             abort_if_not(current_node_idx_ != MAX_SIZE_T, "Failed to find client in directory");
 
+            printf("current node idx: %zu\n", current_node_idx_);
+
             pthread_mutex_unlock(&lock_);
         }
 
@@ -746,28 +752,22 @@ class Client : public Network {
             Message* msg = dynamic_cast<Message*>(message);
             abort_if_not(msg != nullptr, "Client failed to cast Message type.");
 
-            char ipstr[INET6_ADDRSTRLEN];
-            sockaddr_in sender = msg->get_sender();
-            inet_ntop(AF_INET, &sender.sin_addr, ipstr, sizeof(ipstr));
-
-            String sender_str(ipstr);
-
             switch (message->get_type()) {
                 case MsgKind::GET:
                 {   
-                    return msg_handler_->handle_get(sender_str, msg->get_payload_size(), msg->get_payload());
+                    return msg_handler_->handle_get(get_sockaddr(), msg->get_payload_size(), msg->get_payload());
                 }
                 case MsgKind::GETANDWAIT:
                 {
-                    return msg_handler_->handle_get_and_wait(sender_str, msg->get_payload_size(), msg->get_payload());
+                    return msg_handler_->handle_get_and_wait(get_sockaddr(), msg->get_payload_size(), msg->get_payload());
                 }
                 case MsgKind::PUT:
                 {
-                    return msg_handler_->handle_put(sender_str, msg->get_payload_size(), msg->get_payload());
+                    return msg_handler_->handle_put(get_sockaddr(), msg->get_payload_size(), msg->get_payload());
                 }
                 case MsgKind::MESSAGE:
                 {  
-                    return msg_handler_->handle_message(sender_str, msg->get_payload_size(), msg->get_payload());
+                    return msg_handler_->handle_message(get_sockaddr(), msg->get_payload_size(), msg->get_payload());
                 }
                 default:
                     fail("message_handler_dispatch: got an invalid msgkind");

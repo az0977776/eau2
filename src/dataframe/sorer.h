@@ -40,9 +40,7 @@ class SOR : public Object {
             Key* key = new Key(0, filename_->c_str());
             Schema* schema = infer_columns_(from, len);
             DataFrame* df = new DataFrame(*schema, *key, kvs_);
-            printf("before parsing the dataframe\n");
             parse_(df, from, len);
-            printf("after parsing the df\n");
             delete schema;
             delete key;
             return df;
@@ -256,6 +254,7 @@ class SOR : public Object {
                         }
                     }
                 }
+
                 df->add_row(df_row);
                 delete[] row;
             }

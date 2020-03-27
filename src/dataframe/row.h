@@ -159,15 +159,22 @@ class StringBox: public Box {
 
         StringBox() : Box() {}
 
-        ~StringBox() { }
+        ~StringBox() {
+            if (has_been_set_) {
+                delete val_;
+            }
+         }
 
         StringBox* as_string() {
             return dynamic_cast<StringBox*>(this);
         }
     
         void set(String* b) {
+            if (has_been_set_) {
+                delete val_;
+            }
             has_been_set_ = true;
-            val_ = b;
+            val_ = b->clone();
         }
         
         String* get() {
@@ -307,11 +314,17 @@ class Row : public Object {
             for (size_t i = 0; i < width(); i++) {
                 switch (s_.col_type(i)) {
                     case BOOL:
-                        f.accept(data_[i]->as_bool()->get());
-                        break;                   
+                    {
+                        bool b = data_[i]->as_bool()->get();
+                        f.accept(b);
+                        break;           
+                    }        
                     case INT:
-                        f.accept(data_[i]->as_int()->get());
+                    {
+                        int in = data_[i]->as_int()->get();
+                        f.accept(in);
                         break;
+                    }
                     case DOUBLE:
                         f.accept(data_[i]->as_double()->get());
                         break;

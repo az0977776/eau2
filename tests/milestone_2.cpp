@@ -12,7 +12,7 @@ class Trivial {
         }
 
         void run_() {
-            size_t SZ = 1000 * 1000;
+            size_t SZ = 10000;
             double* vals = new double[SZ];
             double sum = 0;
             for (size_t i = 0; i < SZ; ++i) sum += vals[i] = i;
@@ -33,7 +33,7 @@ class Trivial {
 };
 
 int main() {
-    KVStore kv;
+    KVStore kv(false);  // do not run the client
     Trivial t(0, &kv);
     t.run_();
 

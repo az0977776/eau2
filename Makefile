@@ -10,6 +10,9 @@ server:
 client:
 	g++ -pthread -O3 -Wall -pedantic -std=c++11 src/kvstore/client.cpp -o client && ./client
 
+kvstore:
+	g++ -pthread -O3 -Wall -pedantic -std=c++11 src/kvstore/kvstore.cpp -o kvstore && ./kvstore
+
 test: build 
 	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test/tests && ./test_suite"
 
@@ -28,4 +31,4 @@ clean:
 	-rm server
 	-rm client
 
-.PHONY: server client
+.PHONY: server client kvstore

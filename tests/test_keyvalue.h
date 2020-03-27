@@ -127,7 +127,8 @@ TEST(testKey, testKeySerialBufSize) {
 // *************************** Value Tests ***********************************
 
 void test_value_get() {
-    const char* buf = "This is a test";
+    char buf[15];
+    memcpy(buf, "This is a test", 15);
     Value v(strlen(buf) + 1, buf);
 
     for (size_t i = 0; i < strlen(buf) + 1; i++) {
@@ -140,7 +141,8 @@ TEST(testValue, testValueGet) {
 }
 
 void test_value_size() {
-    const char* buf = "This is a test";
+    char buf[15];
+    memcpy(buf, "This is a test", 15);
     Value v(strlen(buf) + 1, buf);
 
     EXPECT_EQ(strlen(buf) + 1, v.size());
@@ -151,10 +153,12 @@ TEST(testValue, testValueSize) {
 }
 
 void test_value_equals() {
-    const char* buf = "this is one test";
+    char buf[17];
+    memcpy(buf, "This is one test", 17);
     size_t buf_len = strlen(buf) + 1;
 
-    const char* other_buf = "another one to test that is much longer";
+    char other_buf[40];
+    memcpy(other_buf, "another one to test that is much longer", 40);
     size_t other_buf_len = strlen(other_buf) + 1;
 
     Value value(buf_len, buf);
@@ -174,7 +178,8 @@ TEST(testValue, testValueEquals) {
 }
 
 void test_value_clone() {
-    const char* buf = "this is one test";
+    char buf[15];
+    memcpy(buf, "This is a test", 15);
     size_t buf_len = strlen(buf) + 1;
     Value value(buf_len, buf);
     Value* copy = value.clone();
@@ -189,10 +194,12 @@ TEST(testValue, testValueClone) {
 }
 
 void test_value_hash() {
-    const char* buf = "this is one test";
+    char buf[15];
+    memcpy(buf, "This is a test", 15);
     size_t buf_len = strlen(buf) + 1;
 
-    const char* other_buf = "another one to test that is much longer";
+    char other_buf[40];
+    memcpy(other_buf, "another one to test that is much longer", 40);
     size_t other_buf_len = strlen(other_buf) + 1;
 
     Value value(buf_len, buf);

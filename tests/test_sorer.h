@@ -67,7 +67,7 @@ bool compare_array_chars(char** actual, const char** expected, size_t len) {
 }
 
 bool parse_row_wrapper(const char* input, const char** expected) {
-    KVStore kvs;
+    KVStore kvs(false);
     SOR* reader = new SOR("../data/test.sor", &kvs);
     char buf[2048];
 
@@ -84,7 +84,7 @@ bool parse_row_wrapper(const char* input, const char** expected) {
 }
 
 bool parse_field_wrapper(const char* input, const char* output, int* len) {
-    KVStore kvs;
+    KVStore kvs(false);
     SOR* reader = new SOR("../data/test.sor", &kvs);
     char buf[2048];
 
@@ -146,7 +146,7 @@ void test_parse_field_() {
 }
 
 void test_infer_columns_() {
-    KVStore kvs;
+    KVStore kvs(false);
     SOR reader("../data/test.sor", &kvs);
 
     Schema* schema = reader.infer_columns_(0, 10000);
@@ -164,15 +164,12 @@ void test_infer_columns_() {
 }
 
 void test_read() {
-    KVStore kvs;
+    KVStore kvs(false);
     SOR reader("../data/test.sor", &kvs);
 
-    printf("before read\n");
     DataFrame* df = reader.read(0, 10000);
     Schema schema = df->get_schema();
     
-    printf("before the col type check\n");
-
     test(df->ncols() == 5, "Number of columns");
     test(df->nrows() == 9, "Number of rows");
     test(schema.col_type(0) == BOOL, "type of column 0");
@@ -180,27 +177,23 @@ void test_read() {
     test(schema.col_type(2) == DOUBLE, "type of column 2");
     test(schema.col_type(3) == STRING, "type of column 3");
     test(schema.col_type(4) == STRING, "type of column 4");
-    printf("Before bool check\n");
     test(df->get_bool(0, 0) == false, "Value at column 0 row 0");
     test(df->get_bool(0, 1) == true, "Value at column 0 row 1");
     test(df->get_bool(0, 5) == false, "Value at column 0 row 5");
     test(df->get_bool(0, 6) == false, "Value at column 0 row 6");
     test(df->get_bool(0, 7) == true, "Value at column 0 row 7");
-    printf("Before int check\n");
 
     test(df->get_int(1, 0) == 1, "Value at column 1 row 0");
     test(df->get_int(1, 1) == 133454, "Value at column 1 row 1");
     test(df->get_int(1, 5) == 0, "Value at column 1 row 5");
     test(df->get_int(1, 6) == 6, "Value at column 1 row 6");
     test(df->get_int(1, 7) == 7, "Value at column 1 row 7");
-    printf("Before double check\n");
 
     test(df->get_double(2, 0) == 123, "Value at column 2 row 0");
     test(df->get_double(2, 1),  -123.938, 0.001, "Value at column 2 row 1");
     test(df->get_double(2, 5) == 0, "Value at column 2 row 5");
     test(df->get_double(2, 6) == -123, "Value at column 2 row 6");
     test(df->get_double(2, 7) == 444, "Value at column 2 row 7");
-    printf("Before stirng check\n");
 
     test(df->get_string(3, 0), "-12444.21123", "Value at column 3 row 0");
     test(df->get_string(3, 1), "hello", "Value at column 3 row 1");
@@ -214,7 +207,7 @@ void test_read() {
 }
 
 void test_partial_file_read() {
-    KVStore kvs;
+    KVStore kvs(false);
     SOR reader("../data/test.sor", &kvs);
 
     DataFrame* df = reader.read(50, 10000);

@@ -135,11 +135,7 @@ class Value : public Object {
 
         // For debugging the bytes. this will print the val in four size_t as hexs
         void print() {
-            size_t* temp = reinterpret_cast<size_t*>(val_);
-            size_t len = bytes_ / sizeof(size_t);
-            for (size_t i = 0; i < len; i += 4) {
-                printf("[bytes %zu to %zu]  0x%zX   0x%zX   0x%zX   0x%zX\n", i * sizeof(size_t), (i + 4) * sizeof(size_t) - 1, temp[i], temp[i + 1], temp[i + 2], temp[i + 3]);
-            }
+            print_byte(val_, bytes_);
         }
 
         // for debugging the bytes as strings
