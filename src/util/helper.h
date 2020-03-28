@@ -7,6 +7,10 @@
 
 #include <errno.h>
 
+
+#include <stdarg.h> /* va_end(), va_list, va_start(), vprintf() */
+#include <stdio.h> /* vprintf() */
+
 /** Helper class providing some C++ functionality and convenience
  *  functions. This class has no data, constructors, destructors or
  *  virtual functions. Inheriting from it is zero cost.
@@ -29,6 +33,7 @@ class Sys {
   Sys& pln(bool c) { std::cout << c << "\n";  return *this; }  
   Sys& pln(char c) { std::cout << c << "\n";  return *this; }
   Sys& pln(float x) { std::cout << x << "\n";  return *this; }
+  Sys& pln(double x) { std::cout << x << "\n";  return *this; }
   Sys& pln(size_t x) { std::cout << x << "\n";  return *this; }
   Sys& pln(const char* c) { std::cout << c << "\n";  return *this; }
 
@@ -52,9 +57,15 @@ class Sys {
   }
 
   // alternative to exit_if_not but takes in a const char* instead of a char*
-  void abort_if_not(bool b, const char* c) {
+  void abort_if_not(bool b, const char* fmt, ...) {
       if (b) return;
-      std::cout << "Exit message: \"" << c << "\" -- errno: " << errno << "\n";
+      printf("Exit message: \"");
+      va_list ap;
+      va_start(ap, fmt);
+      vprintf(fmt, ap);
+      va_end(ap);
+      printf(" -- errno: %d\n", errno);
+      // printf("\"\n");
       exit(-1);
   }
 

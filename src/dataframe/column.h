@@ -135,24 +135,35 @@ class Column : public Object {
         String* col_name_;  // owned
         Vector<Key*> *chunk_keys_;
 
+        size_t cached_chunk_idx_;
+        Value* cached_chunk_value_;  // owned
+
         size_t len_;
 
-        Column(String* col_name, KVStore* kv) {
-            len_ = 0;
+        // this is only used to abstract common Column constructor
+        Column(size_t len, KVStore* kv, String* col_name) {
+            len_ = len;
             kv_ = kv;
             col_name_ = col_name->clone();
+
+            cached_chunk_idx_ = 0;
+            cached_chunk_value_ = nullptr; // owned by the column
+        }
+
+        Column(String* col_name, KVStore* kv) : Column(0, kv, col_name) {
             chunk_keys_ = new Vector<Key*>();
         }
 
         // NOTE: takes ownership of chunk_keys and the keys inside the vector
-        Column(size_t len, Vector<Key*>* chunk_keys, String* col_name, KVStore* kv) {
-            len_ = len;
-            kv_ = kv;
-            col_name_ = col_name->clone();
+        Column(size_t len, Vector<Key*>* chunk_keys, String* col_name, KVStore* kv) : Column(len, kv, col_name) {
             chunk_keys_ = chunk_keys;
         }
 
         ~Column() {
+            if (cached_chunk_value_ != nullptr) {
+                delete cached_chunk_value_;
+            }
+
             delete col_name_;
             for (size_t i = 0; i < len_; i++) {
                 delete chunk_keys_->get(i);
@@ -176,6 +187,31 @@ class Column : public Object {
             ret[col_name_len] = ':';
             sprintf(ret+col_name_len+1, "0x%X", (unsigned int)chunk_idx);
             return ret;
+        }
+
+        // chunk returned is owned by this column 
+        Value* get_chunk_(size_t chunk_idx, bool &owned) {
+            // if getting the latest chunk (not read-only yet)
+            if ((chunk_idx + 1) * CHUNK_SIZE > len_) {
+                // always re-get the last chunk of the column because it could have changed and don't cache
+                Key* chunk_key = chunk_keys_->get(chunk_idx);
+                return kv_->get(*chunk_key, owned);
+            // if getting a read-only chunk
+            } else {
+                // if cache is empty or if the cached value's idx is not the same
+                // get the value from the kvstore and cache it
+                if (cached_chunk_value_ == nullptr || cached_chunk_idx_ != chunk_idx) {
+                    if (cached_chunk_value_ != nullptr) {
+                        // delete the cached Value that is owned by this column
+                        delete cached_chunk_value_;
+                    }
+                    cached_chunk_idx_ = chunk_idx;
+                    Key* chunk_key = chunk_keys_->get(chunk_idx);
+                    cached_chunk_value_ = kv_->get(*chunk_key);  // returns the cloned value from KVStore
+                }
+                owned = false; // owned by the column
+                return cached_chunk_value_;
+            }
         }
 
         /** Type converters: Return same column under its actual type, or
@@ -524,7 +560,9 @@ class DoubleColumn : public Column {
         }
         
         // NOTE: takes ownership of chunk_keys and the keys inside the vector
-        DoubleColumn(size_t len, Vector<Key*>* chunk_keys, String* col_name, KVStore* kv) : Column(len, chunk_keys, col_name, kv) { }
+        DoubleColumn(size_t len, Vector<Key*>* chunk_keys, String* col_name, KVStore* kv) : Column(len, chunk_keys, col_name, kv) { 
+            // printf("Double Column constructor len = %zu\n", len);
+        }
 
         ~DoubleColumn() { }
 
@@ -548,13 +586,14 @@ class DoubleColumn : public Column {
         // gets the double at the index idx
         // if idx is out of bounds, exit
         double get(size_t idx) {
-            abort_if_not(idx < size(), "DoubleColumn.get(): index out of bounds");
-            bool owned = true;
+            // printf("Double column size = %zu, get index = %zu\n", size(), idx);
+            abort_if_not(idx < size(), "DoubleColumn.get(): index of %zu out of bounds (Column size = %zu)", idx, size());
+            bool owned = false;
             size_t chunk_idx = idx / CHUNK_SIZE;
             size_t item_idx = idx % CHUNK_SIZE;
-            Key* chunk_key = chunk_keys_->get(chunk_idx);
 
-            Value* val = kv_->get(*chunk_key, owned);
+            Value* val = get_chunk_(chunk_idx, owned);
+
             char* v = val->get();
             double rv = 0;
             memcpy(&rv, v + item_idx * sizeof(double), sizeof(double));

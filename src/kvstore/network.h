@@ -63,13 +63,19 @@ class ConnectionThread : public Thread {
     public:
         Network* network_;  // does not own
         int fd_;
+        bool in_use_;
 
         ConnectionThread(Network* network) {
             network_ = network;
             fd_ = 0;
+            in_use_ = false;
         }
 
         ~ConnectionThread() { }
+
+        bool is_in_use() {
+            return in_use_;
+        }
 
         void set_fd(int fd);
         void run();    
@@ -137,10 +143,10 @@ class Network : public Object {
             return_msg_len = 0;
 
             // sending the header to the file descriptor
-            abort_if_not(send_chars(fd, header.header_len(), header.get_header()), "Failed to send header");
+            abort_if_not(send_chars(fd, header.header_len(), header.get_header()), "Failed to send header of type %d", header.get_type());
 
             int read_bytes = read(fd, buf, header.header_len());
-            printf("Number of bytes returned for read: %d, header_len = %zu\n", read_bytes, header.header_len());
+            // printf("Number of bytes returned for read: %d, header_len = %zu\n", read_bytes, header.header_len());
             abort_if_not((size_t)read_bytes == header.header_len(), "send_message().check_header: Did not read the correct numnber of bytes");
             Header check_header(buf);
 
@@ -157,7 +163,6 @@ class Network : public Object {
                     abort_if_not((size_t)(read(fd, buf, header.header_len())) == header.header_len(), "send_message().check_header2: Did not read the correct numnber of bytes");
                     check_header2 = new Header(buf);
                     
-                    // returned header should be an ACK to close the connection
                     if (check_header2->get_type() == MsgKind::RESPONSE) {
                         send_ready_(fd);
 
@@ -294,6 +299,7 @@ class Network : public Object {
             int new_fd;
             struct timeval tv;
             fd_set readfds;
+            ConnectionThread *connection_thread;
 
             tv.tv_sec = 1;
             tv.tv_usec = 0;
@@ -312,10 +318,15 @@ class Network : public Object {
                     abort_if_not(new_fd != -1, "Accept connection: failed to accept connection");
                     
                     // can receive up to CLIENT_NUM connections at once
-                    ConnectionThread *c = connection_threads_[connection_count_++ % CLIENT_NUM];
-                    c->set_fd(new_fd);
-                    c->start();
-                    c->detach();
+                    connection_thread = connection_threads_[connection_count_++ % CLIENT_NUM];
+                    while (connection_thread->is_in_use()) {
+                        // if the current thread is in use then move to the next one. 
+                        // There should always be at least one open connection thread 
+                        connection_thread = connection_threads_[connection_count_++ % CLIENT_NUM];
+                    }
+                    connection_thread->set_fd(new_fd);
+                    connection_thread->start();
+                    connection_thread->detach();
                 }
                 else if (quitting_) {
                     printf("Listening server is quitting\n");
@@ -350,11 +361,9 @@ void ConnectionThread::set_fd(int fd) {
 }
 
 void ConnectionThread::run() {
-    printf("connection thread starting\n");
+    in_use_ = true;
     Header* message = network_->recieve_message(fd_);
-    printf("connection thread received message\n");
     Response* response = network_->handle_message(message);
-    printf("created a response for the received message\n");
     size_t return_msg_len;
 
     if (response != nullptr) {
@@ -365,11 +374,11 @@ void ConnectionThread::run() {
     }
 
     network_->send_ack_(fd_);
-    printf("sending an ack\n");
 
     delete message;
     message = nullptr;
     close(fd_);
+    in_use_ = false;
 }
 
 // This is a thread that will accept connections for the given network object.
@@ -634,9 +643,9 @@ class Client : public Network {
             wait_for_dir_();
       
             current_node_idx_ = current_dir_->index_of(client_ip, listening_port_);
-            abort_if_not(current_node_idx_ != MAX_SIZE_T, "Failed to find client in directory");
+            abort_if_not(current_node_idx_ < CLIENT_NUM, "Failed to find client in directory");
 
-            printf("current node idx: %zu\n", current_node_idx_);
+            printf("Current node idx: %zu\n", current_node_idx_);
 
             pthread_mutex_unlock(&lock_);
         }
@@ -652,7 +661,6 @@ class Client : public Network {
             // set the quitting flag and then wait for the listening thread to join before continuing 
             quitting_ = true;
             listening_thread_->join();
-
 
             pthread_mutex_lock(&lock_);
             if (current_dir_ != nullptr) {
@@ -722,7 +730,7 @@ class Client : public Network {
         // Getting a value associated with a key on another key value store client
         char* get_and_wait(size_t to_node_idx, size_t payload_len, char* payload, size_t &return_msg_len) {
             GetAndWait message(get_sockaddr(), payload_len, payload);
-            
+
             return send_to_node_(to_node_idx, &message, return_msg_len);
         }
 

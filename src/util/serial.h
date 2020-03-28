@@ -5,18 +5,18 @@
 #include <netinet/in.h>
 
 enum class MsgKind { 
-    HEADER,
-    REGISTER,
-    DIRECTORY,
-    MESSAGE,
-    SHUTDOWN,
-    READY,
-    ACK,
-    DEREGISTER,
-    GET,
-    GETANDWAIT,
-    PUT,
-    RESPONSE,
+    HEADER,         // 0
+    REGISTER,       // 1
+    DIRECTORY,      // 2
+    MESSAGE,        // 3
+    SHUTDOWN,       // 4
+    READY,          // 5
+    ACK,            // 6
+    DEREGISTER,     // 7
+    GET,            // 8
+    GETANDWAIT,     // 9
+    PUT,            // 10
+    RESPONSE,       // 11
 };
 
 const size_t HEADER_SIZE = sizeof(MsgKind) + sizeof(size_t) + sizeof(sockaddr_in);

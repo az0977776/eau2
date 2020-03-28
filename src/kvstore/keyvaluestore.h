@@ -11,6 +11,7 @@
 #include <pthread.h>
 
 static const char* SERVER_IP = "127.0.0.1";
+// static const size_t KVSTORE_CACHE_SIZE = 4;
 
 class KVStore;
 class KVStoreMessageHandler : public MessageHandler {
@@ -23,6 +24,7 @@ class KVStoreMessageHandler : public MessageHandler {
     
         ~KVStoreMessageHandler() { }
 
+        void wait_for_node_index();
         Response* handle_message(sockaddr_in server, size_t data_len, char* data);
         Response* handle_get(sockaddr_in server, size_t data_len, char* data);
         Response* handle_get_and_wait(sockaddr_in server, size_t data_len, char* data);
@@ -37,6 +39,9 @@ class KVStore : public Object {
         Map *map_;
         pthread_mutex_t lock_; // this locks the map of local values
 
+        // Key* cached_keys_[KVSTORE_CACHE_SIZE];  // key.hash() % KVSTORE_CACHE_SIZE = index, key.equals(array[index]) 
+        // Value* cached_values_[KVSTORE_CACHE_SIZE];
+
         // network layer
         Client* client_;
 
@@ -48,6 +53,9 @@ class KVStore : public Object {
             server_ = server;
             
             if (server_) {
+                // this is to have a value to compare to and check that it has been set before continuing
+                // this is checked in KVStoreMessageHandler.handle_get_and_wait
+                node_index_ = -1; 
                 // create network
                 client_ = new Client(SERVER_IP, SERVER_IP, new KVStoreMessageHandler(this));
                 node_index_ = client_->get_index();
@@ -217,6 +225,12 @@ class KVStore : public Object {
 
 // KVStoreMessageHandler methods
 
+void KVStoreMessageHandler::wait_for_node_index() {
+    while (kvs_->node_index() == -1) {
+        sleep(1);
+    } 
+}
+
 // handle a generic message coming from the given sender
 // return: the response the the given message.
 //          if respnse is nullptr then nothing is sent back.
@@ -232,9 +246,8 @@ Response* KVStoreMessageHandler::handle_get(sockaddr_in server, size_t data_len,
     bool owned = false;
 
     Key* key = Key::deserialize(data);
+    wait_for_node_index();
     abort_if_not(key->get_index() == kvs_->node_index(), "KVStore got a GET request for the wrong node");
-
-    key->print();
 
     Value* v = kvs_->get(*key, owned);
     abort_if_not(!owned, "KVStore.handle_get(): Should not own the value");
@@ -252,21 +265,24 @@ Response* KVStoreMessageHandler::handle_get_and_wait(sockaddr_in server, size_t 
     bool owned = false;
 
     Key* key = Key::deserialize(data);
-    abort_if_not(key->get_index() == kvs_->node_index(), "KVStore got a GET_AND_WAIT request for the wrong node");
+    wait_for_node_index();
+    abort_if_not(key->get_index() == kvs_->node_index(), "KVStore on node %zu got a GET_AND_WAIT request for node %zu", kvs_->node_index(), key->get_index());
 
     Value* v = kvs_->getAndWait(*key, owned);
     abort_if_not(!owned, "KVStore.handle_get_and_wait(): Should not own the value");
 
-    return new Response(kvs_->get_sender(), v->size(), v->get());
+    Response* rv = new Response(kvs_->get_sender(), v->size(), v->get());
+    return rv;
 }
 
 // handle a generic put coming from the given sender
 // return: the response the the given message.
 //          if respnse is nullptr then nothing is sent back.
 Response* KVStoreMessageHandler::handle_put(sockaddr_in server, size_t data_len, char* data) {
-    print_byte(data, data_len);
+    // print_byte(data, data_len);
 
     Key* key = Key::deserialize(data);
+    wait_for_node_index();
     abort_if_not(key->get_index() == kvs_->node_index(), "KVStore got a PUT request for the wrong node");
 
     Value* val = new Value(data_len - key->serial_buf_size(), data + key->serial_buf_size());
@@ -277,3 +293,30 @@ Response* KVStoreMessageHandler::handle_put(sockaddr_in server, size_t data_len,
 
     return nullptr;
 }
+
+/*
+g++ -pthread -O3 -Wall -pedantic -std=c++11 tests/milestone_3.cpp -o milestone3
+./milestone3 &
+./milestone3 &
+./milestone3
+Current node idx: 1
+This is the counter node with node idx: 1
+Exit message: "KVStore on node 4570972160 got a GET_AND_WAIT request for node 0 -- errno: 0
+Exit message: "send_message().check_header2: Did not read the correct numnber of bytes -- errno: 42
+Exit message: "send_message().check_header2: Did not read the correct numnber of bytes -- errno: 42
+make: *** [milestone3] Error 255
+➜  eau2 git:(master) ✗ make milestone3
+g++ -pthread -O3 -Wall -pedantic -std=c++11 tests/milestone_3.cpp -o milestone3
+./milestone3 &
+./milestone3 &
+./milestone3
+Current node idx: 1
+This is the counter node with node idx: 1
+Exit message: "KVStore on node 4653596672 got a GET_AND_WAIT request for node 0 -- errno: 0
+Exit message: "send_message().check_header2: Did not read the correct numnber of bytes -- errno: 42
+make: *** [milestone3] Error 255
+Exit message: "send_message().check_header2: Did not read the correct numnber of bytes -- errno: 42
+
+
+
+*/

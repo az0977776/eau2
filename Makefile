@@ -24,6 +24,12 @@ milestone2:
 	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test/tests && g++ -pthread -O3 -Wall -pedantic -std=c++11 milestone_2.cpp -o milestone2"
 	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test/tests && ./milestone2"
 
+milestone3:
+	g++ -pthread -O3 -Wall -pedantic -std=c++11 tests/milestone_3.cpp -o milestone3
+	./milestone3 &
+	./milestone3 &
+	./milestone3
+
 clean:
 	-rm -rf tests/CMakeCache.txt
 	-rm tests/test_suite
@@ -31,4 +37,4 @@ clean:
 	-rm server
 	-rm client
 
-.PHONY: server client kvstore
+.PHONY: server client kvstore milestone2 milestone3

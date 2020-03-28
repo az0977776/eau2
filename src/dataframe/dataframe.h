@@ -186,7 +186,11 @@ class DataFrameOriginal : public Object {
 
         /** Create a data frame from a schema and columns. All columns are created
         * empty. */
-        DataFrameOriginal(Schema& schema, Key& key, KVStore* kv) : schema_(schema) {
+        DataFrameOriginal(Schema& schema, Key& key, KVStore* kv) : DataFrameOriginal(schema, key, kv, true) {
+
+        }
+
+        DataFrameOriginal(Schema& schema, Key& key, KVStore* kv, bool add_self) : schema_(schema) {
             cols_cap_ = schema_.width() < 4 ? 4: schema_.width();
             cols_len_ = schema_.width();
             num_cols_owned_ = schema_.width();
@@ -195,7 +199,9 @@ class DataFrameOriginal : public Object {
             
             create_columns_by_schema_();
 
-            add_self_to_kv_();
+            if (add_self) {
+                add_self_to_kv_();
+            }
         }
 
         ~DataFrameOriginal() {
@@ -279,6 +285,13 @@ class DataFrameOriginal : public Object {
         * is external, and appears as the last column of the DataFrameOriginal, the
         * name is optional and external. A nullptr colum is undefined. */
         void add_column(Column* col) {
+            add_column(col, true);
+        }
+
+        /** Adds a column this DataFrameOriginal, updates the schema, the new column
+        * is external, and appears as the last column of the DataFrameOriginal, the
+        * name is optional and external. A nullptr colum is undefined. */
+        void add_column(Column* col, bool add_self) {
             abort_if_not(col != nullptr, "DataFrameOriginal.add_column(): col is nullptr");
             abort_if_not(cols_len_ == 0 || col->size() == nrows(), "DataFrameOriginal.add_column(): DataFrameOriginal is not rectangular");
             schema_.add_column(col->get_type());
@@ -289,7 +302,9 @@ class DataFrameOriginal : public Object {
             check_and_reallocate_();
             cols_[cols_len_] = col;
             cols_len_++;
-            add_self_to_kv_();
+            if (add_self) {
+                add_self_to_kv_();
+            }
         }
 
         /** Return the value at the given column and row. Accessing rows or
@@ -370,13 +385,21 @@ class DataFrameOriginal : public Object {
 
         /** Add a row at the end of this dataframe. The row is expected to have
          *  the right schema and be filled with values, otherwise undedined.  */
-        void add_row(Row& row) {
+        void add_row(Row& row, bool add_self) {
             DataFrameAddFielder f(cols_len_, cols_); 
             row.visit(schema_.length(), f); // add data to columns
             if (cols_len_ > 0 && cols_[0]->size() > schema_.length()) {
                 schema_.add_row(); // nameless row
             }
-            add_self_to_kv_();
+            if (add_self) {
+                add_self_to_kv_();
+            }
+        }
+
+        /** Add a row at the end of this dataframe. The row is expected to have
+         *  the right schema and be filled with values, otherwise undedined.  */
+        void add_row(Row& row) {
+            add_row(row, true);
         }
 
 
@@ -488,9 +511,11 @@ class DataFrame: public DataFrameOriginal{
 
         /** Create a data frame from a schema and columns. All columns are created
         * empty. */
-        DataFrame(Schema& schema, Key &key, KVStore* kv) : DataFrameOriginal(schema, key, kv) {
+        DataFrame(Schema& schema, Key &key, KVStore* kv, bool add_self) : DataFrameOriginal(schema, key, kv, add_self) { }
 
-        }
+        /** Create a data frame from a schema and columns. All columns are created
+        * empty. */
+        DataFrame(Schema& schema, Key &key, KVStore* kv) : DataFrameOriginal(schema, key, kv, true) { }
 
         /** Create a new dataframe, constructed from rows for which the given Rower
         * returned true from its accept method. 
@@ -554,52 +579,60 @@ class DataFrame: public DataFrameOriginal{
 
         static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, String** vals) {
             Schema s("S");
-            DataFrame* df = new DataFrame(s, *k, kvs);
+            DataFrame* df = new DataFrame(s, *k, kvs, false);
             Row r(s);
 
             for (size_t i = 0; i < size; i++) {
                 r.set(0, vals[i]);
-                df->add_row(r);
+                df->add_row(r, false);
             }
+            
+            df->add_self_to_kv_();
             
             return df;
         } 
 
         static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, double* vals) {
             Schema s("D");
-            DataFrame* df = new DataFrame(s, *k, kvs);
+            DataFrame* df = new DataFrame(s, *k, kvs, false);
             Row r(s);
 
             for (size_t i = 0; i < size; i++) {
                 r.set(0, vals[i]);
-                df->add_row(r);
+                df->add_row(r, false);
             }
+
+            df->add_self_to_kv_();
 
             return df;
         } 
 
         static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, int* vals) {
             Schema s("I");
-            DataFrame* df = new DataFrame(s, *k, kvs);
+            DataFrame* df = new DataFrame(s, *k, kvs, false);
             Row r(s);
 
             for (size_t i = 0; i < size; i++) {
                 r.set(0, vals[i]);
-                df->add_row(r);
+                df->add_row(r, false);
             }
+
+            df->add_self_to_kv_();
 
             return df;
         } 
 
         static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, bool* vals) {
             Schema s("B");
-            DataFrame* df = new DataFrame(s, *k, kvs);
+            DataFrame* df = new DataFrame(s, *k, kvs, false);
             Row r(s);
 
             for (size_t i = 0; i < size; i++) {
                 r.set(0, vals[i]);
-                df->add_row(r);
+                df->add_row(r, false);
             }
+
+            df->add_self_to_kv_();
 
             return df;
         } 
@@ -631,11 +664,12 @@ class DataFrame: public DataFrameOriginal{
             memcpy(&num_cols, buf_pointer, sizeof(size_t));
             buf_pointer += sizeof(size_t);
 
-            DataFrame* df = new DataFrame(schema, *k, kvs);
+            // do not add the dataframe to the kvstore
+            DataFrame* df = new DataFrame(schema, *k, kvs, false);
             Column* new_col;
             for (size_t i = 0; i < num_cols; i++) {
                 new_col = Column::deserialize(buf_pointer, kvs);
-                df->add_column(new_col);
+                df->add_column(new_col, false);
                 buf_pointer += df->cols_[i]->serial_buf_size();
             }
 
