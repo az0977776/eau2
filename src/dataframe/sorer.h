@@ -14,6 +14,7 @@
 #include "../util/constant.h"
 
 // Reads a file and determines the schema on read
+// @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 class SOR : public Object {
     public:
         FILE* file_;
@@ -54,9 +55,9 @@ class SOR : public Object {
             if (from == 0) {
                 fseek(file_, from, SEEK_SET);
             } else {
-                char buf[buff_len];
+                char buf[BUFF_LEN];
                 fseek(file_, from - 1, SEEK_SET);
-                fgets(buf, buff_len, file_);
+                fgets(buf, BUFF_LEN, file_);
             }
         }
 
@@ -67,14 +68,14 @@ class SOR : public Object {
         // infers and creates the column objects
         Schema* infer_columns_(size_t from, size_t len) {
             seek_(from);
-            char buf[buff_len];
+            char buf[BUFF_LEN];
 
             size_t total_bytes = 0;
             size_t row_count = 0;
 
             StrBuff col_types;
 
-            while (fgets(buf, buff_len, file_) != nullptr && row_count < infer_line_count) {
+            while (fgets(buf, BUFF_LEN, file_) != nullptr && row_count < INFER_LINE_COUNT) {
                 row_count++;
                 total_bytes += strlen(buf);
                 if (total_bytes >= len) {
@@ -110,7 +111,7 @@ class SOR : public Object {
             for (size_t i = 0; field[i] != '>'; i++) {
                 switch (field[i]) {
                     case '<':  // Malformed input
-                        affirm(false, "Multiple opening <");
+                        fail("Multiple opening <");
                     case ' ': // extra space in front of field
                         ret++;
                         break;
@@ -169,12 +170,12 @@ class SOR : public Object {
         void parse_(DataFrame* df, size_t from, size_t len) {
             seek_(from);
             String empty_string("");
-            char buf[buff_len];
+            char buf[BUFF_LEN];
             Schema schema = df->get_schema();
             Row df_row(schema);
 
             size_t total_bytes = 0;
-            while (fgets(buf, buff_len, file_) != nullptr) {
+            while (fgets(buf, BUFF_LEN, file_) != nullptr) {
                 total_bytes += strlen(buf);
                 if (total_bytes >= len) {
                     break;
@@ -219,7 +220,7 @@ class SOR : public Object {
                                 df_row.set(i, &empty_string);
                                 break;
                             default:
-                                abort_if_not(false, "SOR.parse(): empty value into unknown col type");    
+                                fail("SOR.parse(): empty value into unknown col type");    
                         }
                     } else {
                         switch(schema.col_type(i)) {
@@ -247,7 +248,7 @@ class SOR : public Object {
                             }
                             default:
                             {
-                                abort_if_not(false, "SOR.parse(): put value into unknown col type"); 
+                                fail("SOR.parse(): put value into unknown col type"); 
                             }   
                         }
                     }

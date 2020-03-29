@@ -1,3 +1,5 @@
+# this script is used for testing our sorer implementation
+
 from random import randint, random
 
 rows = 250

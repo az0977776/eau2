@@ -28,9 +28,6 @@ void test_int_column() {
     ASSERT_EQ(ic->get(4999), 4999);
     ASSERT_EQ(ic->get(num_elements - 1), num_elements - 1);
 
-    ic->set(1555, 718237);
-    ASSERT_EQ(ic->get(1555), 718237);
-
     delete ic;
 }
 
@@ -140,9 +137,6 @@ void test_double_column() {
     ASSERT_EQ(dc->size(), 5000);
     ASSERT_FLOAT_EQ(dc->get(4999), 4999 / 8.0);
 
-    dc->set(1555, 718237);
-    ASSERT_FLOAT_EQ(dc->get(1555), 718237);
-
     delete dc;
 }
 
@@ -220,9 +214,6 @@ void test_string_column() {
     ASSERT_EQ(ic->size(), 5000);
 
     ASSERT_TRUE(ic->get(4999)->equals(a));
-
-    ic->set(1555, b);
-    ASSERT_TRUE(ic->get(1555)->equals(b));
 
     // delete ic;
     delete a;
@@ -308,19 +299,6 @@ void test_bool_column() {
     EXPECT_FALSE(ic->get(64));
     EXPECT_FALSE(ic->get(1088));
     EXPECT_FALSE(ic->get(0));
-
-    // check setting all permutations of booleans
-    ic->set(1555, 0);
-    EXPECT_FALSE(ic->get(1555));
-
-    ic->set(1556, 0);
-    EXPECT_FALSE(ic->get(1556));
-
-    ic->set(1024, 1);
-    EXPECT_TRUE(ic->get(1024));
-
-    ic->set(1025, 1);
-    EXPECT_TRUE(ic->get(1025));
 
     delete ic;
 }

@@ -4,10 +4,13 @@
 #include "../util/object.h"
 #include "../util/string.h"
 
-// A key is associates a String with a node index where the data is located
+/*
+* A key is associates a String with a node index where the data is located
+* @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+*/
 class Key : public Object {
     public:
-        size_t node_index_;
+        size_t node_index_;  // the node where the value is stored
         String* key_; // owned
 
         Key(size_t node_index, const char* key) {
@@ -43,25 +46,35 @@ class Key : public Object {
             return new Key(node_index_, key_->c_str());
         }
 
+        // Prints this key to stdout.
         void print() {
             pln(key_->c_str());
         }
 
+        // returns the size of the buffer needed to serialize this object
         size_t serial_buf_size() {
             return sizeof(size_t) + key_->size() + 1;
         }
 
+        // Serialize this key into the given buffer. This assumes that there is enough
+        // space in the buffer. 
+        // @returns: <node_index><null terminated key string>
         char* serialize(char* buf) {
             memcpy(buf, &node_index_, sizeof(size_t));
             memcpy(buf + sizeof(size_t), key_->c_str(), key_->size() + 1); 
             return buf;
         }
 
+        // returns a char* that holds bytes that represent this Key object.
+        // @returns: <node_index><null terminated key string>
         char* serialize() {
             char* buf = new char[serial_buf_size()];
             return serialize(buf);
         }
 
+        // deserialize the char* buffer into a Key object 
+        // assumes that buf is long enough and is in the format of 
+        // <node_index><null terminated key string>
         static Key* deserialize(const char* buf) {
             size_t node_index = 0;
             memcpy(&node_index, buf, sizeof(size_t));
@@ -76,7 +89,10 @@ class Key : public Object {
         }
 };
 
-// A value is a wrapper for a serialized object
+/*
+* A value is a wrapper for a serialized string of bytes
+* @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+*/
 class Value : public Object {
     public: 
         char* val_;  // owned

@@ -21,6 +21,7 @@
 
 // to be implemented from
 // this is a class that has a callback method to be called when a message is returned
+// @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 class MessageHandler : public Object {
     public:
     
@@ -55,11 +56,15 @@ class MessageHandler : public Object {
 
 class Network;
 
+/**
+ * This is a thread that will handle connections. It has a flag that will be set when it is in use.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class ConnectionThread : public Thread {
     public:
         Network* network_;  // does not own
-        int fd_;
-        bool in_use_;
+        int fd_;            // the file descriptor of the connection
+        bool in_use_;       // is this thread still in use?
 
         ConnectionThread(Network* network) {
             network_ = network;
@@ -69,10 +74,7 @@ class ConnectionThread : public Thread {
 
         ~ConnectionThread() { }
 
-        bool is_in_use() {
-            return in_use_;
-        }
-
+        bool is_in_use() { return in_use_; }
         void set_fd(int fd);
         void run();    
 };
@@ -80,9 +82,12 @@ class ConnectionThread : public Thread {
 // Network is a subclass of Object
 // Network abstracts creating a listening socket, accepting connections, 
 // connecting to a remote socket and sending messages to sockets.
+// @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 class Network : public Object {
     public:
         bool quitting_; // is this network object quitting
+
+        // This is a pool of Thread objects that can start threads for each connection
         ConnectionThread** connection_threads_;
         size_t connection_count_;
 
@@ -108,23 +113,25 @@ class Network : public Object {
             return (size_t)(send(fd, c, num_bytes, 0)) == num_bytes;
         }
 
-        // sends the payload from the given header as packets of at most BUFF_LEN
+        // sends the payload from the given header as packets of at most MAX_PACKET_LENGTH
         void send_payload_(int fd, Header &header) {
             char* buf = header.serialize();
 
-            for (size_t i = 0; i < header.get_payload_size(); i += BUFF_LEN) {
-                size_t packet_size = header.get_payload_size() - i < BUFF_LEN? header.get_payload_size() - i : BUFF_LEN;
+            for (size_t i = 0; i < header.get_payload_size(); i += MAX_PACKET_LENGTH) {
+                size_t packet_size = header.get_payload_size() - i < MAX_PACKET_LENGTH? header.get_payload_size() - i : MAX_PACKET_LENGTH;
                 abort_if_not(send_chars(fd, packet_size, buf + i), "failed to send a packet payload");
             }
             delete[] buf;
         }
 
+        // Send a ready message to the given file descriptor
         void send_ready_(int fd) {
             Ready ready(get_sockaddr());
             // send the ready 
             abort_if_not(send_chars(fd, ready.header_len(), ready.get_header()), "Failed to send ready header");
         }
 
+        // Send an ack message to the given file descriptor
         void send_ack_(int fd) {
             Ack ack(get_sockaddr());
             // Send an ack to close the connection
@@ -160,22 +167,23 @@ class Network : public Object {
                     check_header2 = new Header(buf);
                     
                     if (check_header2->get_type() == MsgKind::RESPONSE) {
+                        // got a response to the original message.
                         send_ready_(fd);
 
-                        // get response
+                        // Read the response payload
                         return_msg_len = check_header2->get_payload_size();
                         rv = receive_payload_(fd, check_header2->get_payload_size());
                         
                         send_ack_(fd);
                     } else if (check_header2->get_type() != MsgKind::ACK) {
-                        abort_if_not(false, "Send message did not get an ack to close connection");
+                        fail("Send message did not get an ack to close connection");
                     }
 
                     delete check_header2;
                     break;
                 default:
                     // any other type at this time is an error
-                    abort_if_not(false, "Did not get a 'ready' or 'ack' message back after sending header");
+                    fail("Did not get a 'ready' or 'ack' message back after sending header");
                     break;
             }
             delete[] buf;
@@ -184,13 +192,12 @@ class Network : public Object {
         }
 
         // Recieve the a payload of the given size over the given file descriptor. This will recieve the payload in 
-        // packets of size BUFF_LEN or less. Returns a buffer of the given size.
+        // packets of size MAX_PACKET_LENGTH or less. Returns a buffer of the given size.
         char* receive_payload_(int fd, size_t payload_size) {
             char* payload = new char[payload_size];
 
-            for (size_t i = 0; i < payload_size; i += BUFF_LEN) {
-                size_t packet_size = payload_size - i < BUFF_LEN? payload_size - i : BUFF_LEN;
-                // printf("packet_size to read: %zu\n", packet_size);
+            for (size_t i = 0; i < payload_size; i += MAX_PACKET_LENGTH) {
+                size_t packet_size = payload_size - i < MAX_PACKET_LENGTH? payload_size - i : MAX_PACKET_LENGTH;
                 abort_if_not(read(fd, payload + i, packet_size), "failed to receive a packet payload");
             }
             return payload;
@@ -201,6 +208,7 @@ class Network : public Object {
             return { 0 };
         }
 
+        // This reads the payload of a message and creates the correct message type object. 
         template<class T> Header* read_payload_(int fd, Header& check_header) {
             // send the ready to recieve message and start reading from the file descriptor
             send_ready_(fd);
@@ -213,9 +221,10 @@ class Network : public Object {
             return rv;
         }
 
+        // Recieve the message that is on the given file descriptor. Does not close the file descriptor
         Header* recieve_message(int fd) {
             Header* rv = nullptr;
-            char* buf = new char[HEADER_SIZE];
+            char buf[HEADER_SIZE];
 
             // read in the header of a message
             abort_if_not(read(fd, buf, HEADER_SIZE), "Failed to receive message header");
@@ -254,10 +263,9 @@ class Network : public Object {
                     rv = new Shutdown(check_header.get_sender());
                     break;
                 default:
-                    abort_if_not(false, "Received a bad message");
+                    fail("Received a bad message");
                     break;
             }
-            delete[] buf;
             return rv;
         }
 
@@ -280,9 +288,7 @@ class Network : public Object {
 
         // to be inherited and overwritten
         // handles a message
-        virtual Response* handle_message(Header* message) {
-            return nullptr;
-        }
+        virtual Response* handle_message(Header* message) { return nullptr; }
 
         // to be inherited and overwritten
         // this accepts connections on the default listening file descriptor
@@ -290,13 +296,14 @@ class Network : public Object {
         
         // continues to accept and handle connections on the given file descriptor
         void accept_connections(int fd) {
-            struct sockaddr_storage client_addr;
-            socklen_t addr_size = sizeof(client_addr);
             int new_fd;
-            struct timeval tv;
-            fd_set readfds;
             ConnectionThread *connection_thread;
 
+            struct sockaddr_storage client_addr;
+            socklen_t addr_size = sizeof(client_addr);
+
+            struct timeval tv;
+            fd_set readfds;
             tv.tv_sec = 1;
             tv.tv_usec = 0;
 
@@ -321,7 +328,9 @@ class Network : public Object {
                         connection_thread = connection_threads_[connection_count_++ % CLIENT_NUM];
                     }
                     connection_thread->set_fd(new_fd);
+                    // start a new thread
                     connection_thread->start();
+                    // detach the thread so it is cleaned up after finishing
                     connection_thread->detach();
                 }
                 else if (quitting_) {
@@ -356,6 +365,9 @@ void ConnectionThread::set_fd(int fd) {
     fd_ = fd;
 }
 
+// For each connection recieve the message and then handle the message
+// send a response if there is one and then close the connection.
+// the in_use_ varible is set when this thread is still running
 void ConnectionThread::run() {
     in_use_ = true;
     Header* message = network_->recieve_message(fd_);
@@ -378,6 +390,7 @@ void ConnectionThread::run() {
 }
 
 // This is a thread that will accept connections for the given network object.
+// @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 class ListeningThread : public Thread {
     public:
         Network* network_;  // does not own
@@ -398,14 +411,15 @@ class ListeningThread : public Thread {
 // Server is a subclass of Network
 // the server handles client registration and can return a list of all registered
 // clients back to clients
+// @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 class Server : public Network {
     public:
-        ListeningThread* listening_thread_;  // owens
-        int server_fd_;
+        ListeningThread* listening_thread_;             // owens
+        int server_fd_;                                 // the file descriptor that the server listens on
         const char* server_ip_;
 
         pthread_mutex_t lock_;  // this locks both the array and the size t for both reads and writes
-        struct sockaddr_in client_info_[CLIENT_NUM];
+        struct sockaddr_in client_info_[CLIENT_NUM];    // directory of clients
         size_t client_count_;
 
         Server(const char* server_ip) : Network() {
@@ -484,6 +498,7 @@ class Server : public Network {
             return str_buff.get();
         }
 
+        // start accepting connections
         void accept_connections() {
             sockaddr_in s = get_sockaddr();
             printf("Server is now accepting client connections on port: %d...\n", s.sin_port);
@@ -524,7 +539,6 @@ class Server : public Network {
             pthread_mutex_unlock(&lock_);
         }
 
-        // to be inherited and overwritten
         // handles a connection from the given file descriptor and the sockaddr_storage with information about the connector
         virtual Response* handle_message(Header* message) {
             Register* r;
@@ -545,12 +559,12 @@ class Server : public Network {
 
                         String* client = get_client_info(client_count_-1);
                         pthread_mutex_unlock(&lock_);
-                        printf("Registering new client ip: %s\n", client->c_str());
+                        printf("[SERVER] Registering new client ip: %s\n", client->c_str());
                         delete client;
 
                         // just print the current ips for debugging
                         String *client_ipps = get_client_infos();
-                        printf("Current client ips: %s\n", client_ipps->c_str());
+                        printf("[SERVER] Current client ips: %s\n", client_ipps->c_str());
                         delete client_ipps;
 
                         // boradcast to all clients
@@ -564,7 +578,7 @@ class Server : public Network {
                     if (idx != MAX_SIZE_T) {
                         pthread_mutex_lock(&lock_);
                         String* client = get_client_info(idx);
-                        printf("Deregistering client ip: %s\n", client->c_str());
+                        printf("[SERVER] Deregistering client ip: %s\n", client->c_str());
                         delete client;
 
                         // decrease the client count
@@ -578,7 +592,7 @@ class Server : public Network {
 
                         // just print the current ips for debugging
                         String *client_ipps = get_client_infos();
-                        printf("Current client ips: %s\n", client_ipps->c_str());
+                        printf("[SERVER] Current client ips: %s\n", client_ipps->c_str());
                         delete client_ipps;
 
                         // boradcast to all clients
@@ -597,18 +611,18 @@ class Server : public Network {
 // Client can also send and receive messages directly from other clients
 class Client : public Network {
     public:
-        const char *server_ip_;  // does not own
-        const char* client_ip_; // does not own
-        int listening_port_;
+        const char *server_ip_;             // does not own
+        const char* client_ip_;             // does not own
+        int listening_port_;                // the port number (in host byte order) 
         int client_listen_fd_;
         ListeningThread* listening_thread_; // owned
-        MessageHandler* msg_handler_; // not owned
+        MessageHandler* msg_handler_;       // not owned
 
-        pthread_mutex_t lock_;  // this is a lock for the directory
-        Directory* current_dir_;  // owned
-        bool directory_init_;
+        pthread_mutex_t lock_;              // this is a lock for the directory
+        Directory* current_dir_;            // owned
+        bool directory_init_;               // has the directory been initilized?
 
-        size_t current_node_idx_;
+        size_t current_node_idx_;           // what is the index of this node in the directory?
 
         Client(const char* server_ip, const char* client_ip, MessageHandler* msg_handler) : Network() {
             server_ip_ = server_ip;
@@ -619,13 +633,13 @@ class Client : public Network {
             current_dir_ = nullptr;
             directory_init_ = false;
 
-            // spawns a child process that listens on the given listening port
+            // spawns a child process that listens on any open listening port
             client_listen_fd_ = get_listen_socket(client_ip_, 0);
 
+            // save the listening port
             sockaddr_in client_listen_addr;
             socklen_t len = sizeof(struct sockaddr);
             getsockname(client_listen_fd_, (struct sockaddr *)&client_listen_addr, &len);
-            
             listening_port_ = ntohs(client_listen_addr.sin_port);
 
             quitting_ = false;
@@ -640,8 +654,6 @@ class Client : public Network {
       
             current_node_idx_ = current_dir_->index_of(client_ip, listening_port_);
             abort_if_not(current_node_idx_ < CLIENT_NUM, "Failed to find client in directory");
-
-            // printf("Current node idx: %zu\n", current_node_idx_);
 
             pthread_mutex_unlock(&lock_);
         }
@@ -691,6 +703,7 @@ class Client : public Network {
             return current_node_idx_;
         }
 
+        // how many nodes are in the directory.
         size_t num_nodes() {
             pthread_mutex_lock(&lock_);
             size_t ret_val = current_dir_->get_num_clients();
@@ -706,6 +719,9 @@ class Client : public Network {
             return addr;
         }
 
+        // Send the given message to the given node index. 
+        // sets the return_msg_len to the number of bytes and returns the response if one was recieved
+        // if no response was sent then nullptr is returned and return_msg_len = 0
         char* send_to_node_(size_t to_node_idx, Header* message, size_t &return_msg_len) {
             pthread_mutex_lock(&lock_);
             int dest_sock = connect_to(current_dir_->get(to_node_idx));
@@ -717,19 +733,25 @@ class Client : public Network {
         }
 
         // Getting a value associated with a key on another key value store client
+        // sets the return_msg_len to the number of bytes and returns the response if one was recieved
+        // if no response was sent then nullptr is returned and return_msg_len = 0
         char* get(size_t to_node_idx, size_t payload_len, char* payload, size_t &return_msg_len) {
             Get message(get_sockaddr(), payload_len, payload);
             
             return send_to_node_(to_node_idx, &message, return_msg_len);
         }
         
-        // Getting a value associated with a key on another key value store client
+        // Getting a value associated with a key on another key value store client. Will keep connection
+        // open until response is sent
+        // sets the return_msg_len to the number of bytes and returns the response if one was recieved
+        // if no response was sent then nullptr is returned and return_msg_len = 0
         char* get_and_wait(size_t to_node_idx, size_t payload_len, char* payload, size_t &return_msg_len) {
             GetAndWait message(get_sockaddr(), payload_len, payload);
 
             return send_to_node_(to_node_idx, &message, return_msg_len);
         }
 
+        // put the given payload into the given node. No response should be sent
         void put(size_t to_node_idx, size_t payload_len, char* payload) {
             Put message(get_sockaddr(), payload_len, payload);
             size_t return_msg_len = 0;
@@ -752,6 +774,7 @@ class Client : public Network {
             Network::accept_connections(client_listen_fd_);
         }
 
+        // This dispatches the given message to the correct function in msg_handler
         Response* message_handler_dispatch(Header* message) {
             Message* msg = dynamic_cast<Message*>(message);
             abort_if_not(msg != nullptr, "Client failed to cast Message type.");
@@ -779,7 +802,6 @@ class Client : public Network {
             }
         }
 
-        // to be inherited and overwritten
         // handles a connection from the given file descriptor and the sockaddr_storage with information about the connector
         virtual Response* handle_message(Header* message) {
             Response* rv = nullptr;
@@ -804,6 +826,7 @@ class Client : public Network {
                 case MsgKind::PUT:
                 case MsgKind::MESSAGE:
                 {  
+                    // GET, GETANDWAIT, PUT, and MESSAGE are all handled here
                     rv = message_handler_dispatch(message);
                     break;
                 }

@@ -4,7 +4,7 @@
 #include "object.h"
 #include <stdlib.h>
 
-// @author barth.c@husky.neu.edu
+// @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 template <class T>
 class Array : public Object{
     public:
@@ -61,6 +61,10 @@ class Array : public Object{
             check_reallocate_();
             values_[len_] = obj;  // not copying on add ...
             len_++;
+        }
+
+        virtual void push_back(T* obj) {
+            push(obj);
         }
 
         // returns the first index of a given object, or -1 if the array does not contain the object

@@ -20,8 +20,11 @@ class Fibonacci : public Rower {
         size_t modulo_ = 22;
         size_t first_int_col_ = 1;
 
+        size_t sum_;
+
         Fibonacci(DataFrame* df) {
             df_ = df;
+            sum_ = 0;
         }
 
         /**
@@ -43,8 +46,7 @@ class Fibonacci : public Rower {
          * reduce the possible number of fibonacci numbers needed to calculate
          */
         bool accept(Row& r) {
-            int result = fibonacci(r.get_int(first_int_col_) % modulo_); // ensure that fib is calculated from small values 
-            df_->set(first_int_col_, r.get_idx(), result);
+            sum_ += fibonacci(r.get_int(first_int_col_) % modulo_); // ensure that fib is calculated from small values 
             return true;
         }
 
@@ -52,8 +54,15 @@ class Fibonacci : public Rower {
             return new Fibonacci(df_);
         }
 
+        size_t get_sum() {
+            return sum_;
+        }
+
         // deletes the other rower
         void join_delete(Rower* other)  {
+            Fibonacci* f = dynamic_cast<Fibonacci*>(other);
+            abort_if_not(f != nullptr, "Fibonacci: cast failure\n");
+            sum_ += f->get_sum();
             delete other;
         }
 };
@@ -67,6 +76,8 @@ void run_map_tests() {
     Fibonacci fib(df);
 
     df->pmap(fib);
+
+    assert(fib.get_sum() == 146);
 
     delete df;
 

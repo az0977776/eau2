@@ -14,6 +14,7 @@
  * knows the number of columns and number of rows, the type of each column,
  * optionally columns and rows can be named by strings.
  * The valid types are represented by the chars 'S', 'B', 'I' and 'D'.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
  */
 class Schema : public Object {
     public:

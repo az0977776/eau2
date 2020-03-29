@@ -20,6 +20,7 @@ Helper classes for DataFrame
 /*
  * DataFrameAddFielder is a subclass of Fielder
  * Used to help add Rows to a DataFrame
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
  */
 class DataFrameAddFielder : public Fielder {
     public:
@@ -77,6 +78,7 @@ class DataFrameAddFielder : public Fielder {
 /*
  * PrintDataFrameFielder is a subclass of Fielder
  * Used to help print fields in a DataFrame
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
  */
 class PrintDataFrameFielder : public Fielder {
     public:
@@ -123,6 +125,7 @@ class PrintDataFrameFielder : public Fielder {
 /**
  * PrintDataFrameRower is a subclass of Rower
  * Used to help print a row 
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
  */
 class PrintDataFrameRower : public Rower {
     public:
@@ -151,13 +154,14 @@ class PrintDataFrameRower : public Rower {
 };
 
 /****************************************************************************
- * DataFrameOriginal::
+ * DataFrame::
  *
- * A DataFrameOriginal is table composed of columns of equal length. Each column
- * holds values of the same type (I, S, B, F). A DataFrameOriginal has a schema that
+ * A DataFrame is table composed of columns of equal length. Each column
+ * holds values of the same type (I, S, B, F). A DataFrame has a schema that
  * describes it.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
  */
-class DataFrameOriginal : public Object {
+class DataFrame : public Object {
     public:
         Schema schema_;
         Column** cols_;
@@ -168,7 +172,7 @@ class DataFrameOriginal : public Object {
         Key* key_;  // owned
 
         /** Create a data frame with the same columns as the given df but with no rows or rownames */
-        DataFrameOriginal(DataFrameOriginal& df, Key& key) : schema_() {
+        DataFrame(DataFrame& df, Key& key) : schema_() {
             for (size_t i = 0; i < df.ncols(); i++) {
                 schema_.add_column(df.schema_.col_type(i));
             }
@@ -186,11 +190,11 @@ class DataFrameOriginal : public Object {
 
         /** Create a data frame from a schema and columns. All columns are created
         * empty. */
-        DataFrameOriginal(Schema& schema, Key& key, KVStore* kv) : DataFrameOriginal(schema, key, kv, true) {
+        DataFrame(Schema& schema, Key& key, KVStore* kv) : DataFrame(schema, key, kv, true) {
 
         }
 
-        DataFrameOriginal(Schema& schema, Key& key, KVStore* kv, bool add_self) : schema_(schema) {
+        DataFrame(Schema& schema, Key& key, KVStore* kv, bool add_self) : schema_(schema) {
             cols_cap_ = schema_.width() < 4 ? 4: schema_.width();
             cols_len_ = schema_.width();
             num_cols_owned_ = schema_.width();
@@ -204,7 +208,7 @@ class DataFrameOriginal : public Object {
             }
         }
 
-        ~DataFrameOriginal() {
+        ~DataFrame() {
             delete key_;
             // do not own any of the columns in this data frame
             // just release the memory for the array holding the column pointers
@@ -238,7 +242,7 @@ class DataFrameOriginal : public Object {
             return ret;
         }
 
-        // creates columns in DataFrameOriginal based on the Schema's types
+        // creates columns in DataFrame based on the Schema's types
         void create_columns_by_schema_() {
             MutableString str("");
             cols_ = new Column*[cols_cap_];
@@ -258,7 +262,7 @@ class DataFrameOriginal : public Object {
                         cols_[i] = new StringColumn(&str, kv_);
                         break;                
                     default:
-                        abort_if_not(false, "DataFrameOriginal(): bad schema");
+                        fail("DataFrame(): bad schema");
                 }
             }
         }
@@ -275,29 +279,29 @@ class DataFrameOriginal : public Object {
             }
         }
 
-        /** Returns the DataFrameOriginal's schema. Modifying the schema after a DataFrameOriginal
+        /** Returns the DataFrame's schema. Modifying the schema after a DataFrame
         * has been created in undefined. */
         Schema& get_schema() {
             return schema_;
         }
 
-        /** Adds a column this DataFrameOriginal, updates the schema, the new column
-        * is external, and appears as the last column of the DataFrameOriginal, the
+        /** Adds a column this DataFrame, updates the schema, the new column
+        * is external, and appears as the last column of the DataFrame, the
         * name is optional and external. A nullptr colum is undefined. */
         void add_column(Column* col) {
             add_column(col, true);
         }
 
-        /** Adds a column this DataFrameOriginal, updates the schema, the new column
-        * is external, and appears as the last column of the DataFrameOriginal, the
+        /** Adds a column this DataFrame, updates the schema, the new column
+        * is external, and appears as the last column of the DataFrame, the
         * name is optional and external. A nullptr colum is undefined. */
         void add_column(Column* col, bool add_self) {
-            abort_if_not(col != nullptr, "DataFrameOriginal.add_column(): col is nullptr");
-            abort_if_not(cols_len_ == 0 || col->size() == nrows(), "DataFrameOriginal.add_column(): DataFrameOriginal is not rectangular");
+            abort_if_not(col != nullptr, "DataFrame.add_column(): col is nullptr");
+            abort_if_not(cols_len_ == 0 || col->size() == nrows(), "DataFrame.add_column(): DataFrame is not rectangular");
             schema_.add_column(col->get_type());
             for (size_t i = nrows(); cols_len_ == 0 && i < col->size(); i++) {
                 // only add rows if it is the first column to be added
-                schema_.add_row(); // make sure schema has the same shape as DataFrameOriginal
+                schema_.add_row(); // make sure schema has the same shape as DataFrame
             }
             check_and_reallocate_();
             cols_[cols_len_] = col;
@@ -310,58 +314,31 @@ class DataFrameOriginal : public Object {
         /** Return the value at the given column and row. Accessing rows or
          *  columns out of bounds, or request the wrong type is undefined.*/
         int get_int(size_t col, size_t row) {
-            abort_if_not(col < cols_len_, "DataFrameOriginal.get_int(): column index out of bounds");
+            abort_if_not(col < cols_len_, "DataFrame.get_int(): column index out of bounds");
             return cols_[col]->as_int()->get(row);
         }
 
         bool get_bool(size_t col, size_t row) {
-            abort_if_not(col < cols_len_, "DataFrameOriginal.get_bool(): column index out of bounds");
+            abort_if_not(col < cols_len_, "DataFrame.get_bool(): column index out of bounds");
             return cols_[col]->as_bool()->get(row);
         }
 
         double get_double(size_t col, size_t row) {
-            abort_if_not(col < cols_len_, "DataFrameOriginal.get_double(): column index out of bounds");
+            abort_if_not(col < cols_len_, "DataFrame.get_double(): column index out of bounds");
             return cols_[col]->as_double()->get(row);
         }
 
         String* get_string(size_t col, size_t row) {
-            abort_if_not(col < cols_len_, "DataFrameOriginal.get_string(): column index out of bounds");
+            abort_if_not(col < cols_len_, "DataFrame.get_string(): column index out of bounds");
             return cols_[col]->as_string()->get(row);
-        }
-
-        /** Set the value at the given column and row to the given value.
-        * If the column is not of the right type or the indices are out of
-        * bound, the result is undefined. */
-        void set(size_t col, size_t row, int val) {
-            abort_if_not(col < cols_len_, "DataFrameOriginal.set(int): column index out of bounds");
-            cols_[col]->as_int()->set(row, val);
-            add_self_to_kv_();
-        }
-
-        void set(size_t col, size_t row, bool val) {
-            abort_if_not(col < cols_len_, "DataFrameOriginal.set(bool): column index out of bounds");
-            cols_[col]->as_bool()->set(row, val);
-            add_self_to_kv_();
-        }
-
-        void set(size_t col, size_t row, double val) {
-            abort_if_not(col < cols_len_, "DataFrameOriginal.set(double): column index out of bounds");
-            cols_[col]->as_double()->set(row, val);
-            add_self_to_kv_();
-        }
-
-        void set(size_t col, size_t row, String* val) {
-            abort_if_not(col < cols_len_, "DataFrameOriginal.set(String*): column index out of bounds");
-            cols_[col]->as_string()->set(row, val);
-            add_self_to_kv_();
         }
 
         /** Set the fields of the given row object with values from the columns at
         * the given offset.  If the row is not form the same schema as the
-        * DataFrameOriginal, results are undefined.
+        * DataFrame, results are undefined.
         */
         void fill_row(size_t idx, Row& row) {
-            abort_if_not(idx < nrows(), "DataFrameOriginal.fill_row(): row index is out of bounds");
+            abort_if_not(idx < nrows(), "DataFrame.fill_row(): row index is out of bounds");
             row.set_idx(idx);
             for (size_t i = 0; i < cols_len_; i++) {
                 switch (schema_.col_type(i)) {
@@ -378,7 +355,7 @@ class DataFrameOriginal : public Object {
                         row.set(i, cols_[i]->as_string()->get(idx));
                         break;                
                     default:
-                        abort_if_not(false, "DataFrameOriginal.fill_row(): bad schema");
+                        fail("DataFrame.fill_row(): bad schema");
                 }
             }
         }
@@ -434,7 +411,7 @@ class DataFrameOriginal : public Object {
         }
 
         bool equals(Object* o) {
-            DataFrameOriginal* other = dynamic_cast<DataFrameOriginal*>(o);
+            DataFrame* other = dynamic_cast<DataFrame*>(o);
             if (other == nullptr || !schema_.equals(&other->schema_) || cols_len_ != other->cols_len_) {
                 return false;
             }
@@ -477,45 +454,16 @@ class DataFrameOriginal : public Object {
             char* buf = new char[serial_buf_size()];
             return serialize(buf);
         }
-};
 
-// MapThread is a subclass of Thread
-// MapThread is is used by pmap in the DataFrame class
-// Each MapThread maps a Rower over a set of rows in the DatFrame
-class MapThread : public Thread {
-    public:
-        size_t start_;
-        size_t end_;
-        Rower *r_;
-        DataFrameOriginal *df_;
-
-        MapThread(size_t start, size_t end, Rower *r, DataFrameOriginal *df) {
-            start_ = start;
-            end_ = end;
-            r_ = r;
-            df_ = df;
+        /** Create a new dataframe, constructed from rows for which the given Rower
+        * returned true from its accept method. 
+        * The returned DataFrame will lose its row names.
+        * */
+        DataFrame* filter(Rower& r) {
+            Key k(0, "bogus name");
+            return filter(r, k);
         }
 
-        /** Subclass responsibility, the body of the run method */
-        virtual void run() { 
-            df_->map_rows_(start_, end_, *r_);
-        }
-};
-
-class DataFrame: public DataFrameOriginal{
-    public:
-
-        DataFrame(DataFrame& df, Key &key) : DataFrameOriginal(df, key) {
-
-        }
-
-        /** Create a data frame from a schema and columns. All columns are created
-        * empty. */
-        DataFrame(Schema& schema, Key &key, KVStore* kv, bool add_self) : DataFrameOriginal(schema, key, kv, add_self) { }
-
-        /** Create a data frame from a schema and columns. All columns are created
-        * empty. */
-        DataFrame(Schema& schema, Key &key, KVStore* kv) : DataFrameOriginal(schema, key, kv, true) { }
 
         /** Create a new dataframe, constructed from rows for which the given Rower
         * returned true from its accept method. 
@@ -534,48 +482,10 @@ class DataFrame: public DataFrameOriginal{
             return df;
         }
 
-        /** Create a new dataframe, constructed from rows for which the given Rower
-        * returned true from its accept method. 
-        * The returned DataFrame will lose its row names.
-        * */
-        DataFrame* filter(Rower& r) {
-            Key k(0, "bogus name");
-            return filter(r, k);
-        }
-
         /** This method clones the Rower and executes the map in parallel. Join is
          * used at the end to merge the results. 
          * */
-        void pmap(Rower& r) {
-            unsigned int n = get_thread_count(); // how many threads are availible on this host
-	        MapThread** pool = new MapThread*[n];
-            Rower** rowers = new Rower*[n];
-
-            size_t current_row = 0;
-            size_t remander = nrows() % n;
-            size_t dividend = nrows() / n;
-            for (size_t i = 0; i < n; i++) {
-                size_t num_rows = dividend;
-                if ( i < remander ) {
-                    num_rows++;
-                }
-
-                rowers[i] = static_cast<Rower *>(r.clone());
-                abort_if_not(rowers[i] != nullptr, "DataFrame.pmap(Rower): bad clone.");
-                pool[i] = new MapThread(current_row, current_row + num_rows, rowers[i], this);
-                pool[i]->start();
-
-                current_row += num_rows;
-            }
-
-            for (size_t i = 0; i < n; i ++) {
-                pool[i]->join();
-                r.join_delete(rowers[i]);
-                delete pool[i];
-            }
-            delete[] pool;
-            delete[] rowers;
-        }
+        void pmap(Rower& r);
 
         static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, String** vals) {
             Schema s("S");
@@ -679,3 +589,58 @@ class DataFrame: public DataFrameOriginal{
             return df;
         }
 };
+
+// MapThread is a subclass of Thread
+// MapThread is is used by pmap in the DataFrame class
+// Each MapThread maps a Rower over a set of rows in the DatFrame
+class MapThread : public Thread {
+    public:
+        size_t start_;
+        size_t end_;
+        Rower *r_;
+        DataFrame *df_;
+
+        MapThread(size_t start, size_t end, Rower *r, DataFrame *df) {
+            start_ = start;
+            end_ = end;
+            r_ = r;
+            df_ = df;
+        }
+
+        /** Subclass responsibility, the body of the run method */
+        virtual void run() { 
+            df_->map_rows_(start_, end_, *r_);
+        }
+};
+
+// this declaration must come after the declaration of MapThread
+void DataFrame::pmap(Rower& r) {
+    unsigned int n = get_thread_count(); // how many threads are availible on this host
+    MapThread** pool = new MapThread*[n];
+    Rower** rowers = new Rower*[n];
+
+    size_t current_row = 0;
+    size_t remander = nrows() % n;
+    size_t dividend = nrows() / n;
+    for (size_t i = 0; i < n; i++) {
+        size_t num_rows = dividend;
+        if ( i < remander ) {
+            num_rows++;
+        }
+
+        rowers[i] = static_cast<Rower *>(r.clone());
+        abort_if_not(rowers[i] != nullptr, "DataFrame.pmap(Rower): bad clone.");
+        pool[i] = new MapThread(current_row, current_row + num_rows, rowers[i], this);
+        pool[i]->start();
+
+        current_row += num_rows;
+    }
+
+    for (size_t i = 0; i < n; i ++) {
+        pool[i]->join();
+        r.join_delete(rowers[i]);
+        delete pool[i];
+    }
+    delete[] pool;
+    delete[] rowers;
+}

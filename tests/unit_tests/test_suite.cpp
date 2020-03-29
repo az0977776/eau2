@@ -10,7 +10,6 @@
 #include "test_row.h"
 #include "test_dataframe.h"
 
-
 int main(int argc, char **argv) {
     run_sorer_tests();
     run_map_tests();

@@ -10,6 +10,7 @@
 // represents an array that is used for bucket in a hashmap
 // each even index i is a key and i+1 is the value assocaited with the key
 // does not own the objects passed into the array
+// @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 class Bucket : public Array<Object> {
     public:
         Bucket() : Array() {}
@@ -86,7 +87,7 @@ class Bucket : public Array<Object> {
 /**
 * An object that represents a map to store keys and values.
 * Map does not own any objects passed to it.
-* @author barth.c@husky.neu.edu
+* @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 */
 class Map : public Object {
     public:

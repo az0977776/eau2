@@ -49,14 +49,7 @@ class Sys {
     return res;
   }
 
-  // Function to terminate execution with a message
-  void exit_if_not(bool b, char* c) {
-    if (b) return;
-    p("Exit message: ").pln(c);
-    exit(-1);
-  }
-
-  // alternative to exit_if_not but takes in a const char* instead of a char*
+  // if not b then print the exit message with a format string and exit with code -1
   void abort_if_not(bool b, const char* fmt, ...) {
       if (b) return;
       printf("Exit message: \"");
@@ -64,16 +57,24 @@ class Sys {
       va_start(ap, fmt);
       vprintf(fmt, ap);
       va_end(ap);
-      printf(" -- errno: %d\n", errno);
+      printf("\" -- errno: %d\n", errno);
       // printf("\"\n");
       exit(-1);
   }
 
-  static void fail(const char* c) {
-    std::cout << "Fail message: " << c << "\n";
+  // Print the exit message and exit with code -1
+  static void fail(const char* fmt, ...) {
+    printf("Fail message: \"");
+    va_list ap;
+    va_start(ap, fmt);
+    vprintf(fmt, ap);
+    va_end(ap);
+    printf("\"\n");
     exit(-1);
   }
 
+  // Try to print each byte in the buf as a char, if it is a special char print as hex
+  // Used in debugging
   static void print_byte(const char* buf, size_t len) {
       for (size_t i = 0; i < len; i++) {
           if (buf[i] < 32 || buf[i] > 126) {
@@ -83,33 +84,5 @@ class Sys {
           }
       }
       printf("\n");
-  }
-  
-// Definitely fail
-//  void FAIL() {
-  void myfail(){
-    pln("Failing");
-    exit(1);
-  }
-
-  // Some utilities for lightweight testing
-  void OK(const char* m) { pln(m); }
-  void t_true(bool p) { if (!p) myfail(); }
-  void t_false(bool p) { if (p) myfail(); }
-
-  void affirm(bool test, const char* msg) {
-      if (!(test)){ 
-          fprintf(stderr, "%s\n", msg); 
-          abort(); 
-      }
-  }
-
-  void check_in_bounds(int argc, int index, int arguments) {
-      affirm((index + arguments < argc), "Missing argument");
-  }
-
-  unsigned int check_positive(int i) {
-      affirm((i >= 0), "Only positive integers allowed");
-      return i;
   }
 };

@@ -21,6 +21,11 @@ enum class MsgKind {
 
 const size_t HEADER_SIZE = sizeof(MsgKind) + sizeof(size_t) + sizeof(sockaddr_in);
 
+/**
+ * This is a message that can be send over the network. This is the parent class for all other
+ * messages.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class Header : public Object {
     public:
         MsgKind kind_;  // the message kind
@@ -78,6 +83,10 @@ class Header : public Object {
         }
 };
 
+/**
+ * This is a message that can be send over the network. This is a generic message that can send a payload
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class Message : public Header {
     public:
         char* payload_; // owned
@@ -106,6 +115,10 @@ class Message : public Header {
         }
 };
 
+/**
+ * This is a message that can be send over the network. This is a message that acknowledges that the protocall is done.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class Ack : public Header {
     public:
         Ack(sockaddr_in sender) : Header(MsgKind::ACK, 0, sender) { }
@@ -115,6 +128,11 @@ class Ack : public Header {
         ~Ack() { }
 };
 
+/**
+ * This is a message that can be send over the network. This is a message that indicates that the sender is ready
+ * to recieve a message with a payload
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class Ready : public Header {
     public:
         Ready(sockaddr_in sender) : Header(MsgKind::READY, 0, sender) { }
@@ -124,6 +142,10 @@ class Ready : public Header {
         ~Ready() { }
 };
 
+/**
+ * This is a message that can be send over the network. This is a message that indicates a shutdown from the server.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class Shutdown : public Header {
     public:
         Shutdown(sockaddr_in sender) : Header(MsgKind::SHUTDOWN, 0, sender) { }
@@ -133,6 +155,10 @@ class Shutdown : public Header {
         ~Shutdown() { }
 };
 
+/**
+ * This is a message that can be send over the network. This is a message that will register the sender with a server.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class Register : public Header {
     public:
         sockaddr_in client_;
@@ -160,6 +186,11 @@ class Register : public Header {
         }
 };
 
+/**
+ * This is a message that can be send over the network. This is a message that will deregister a client
+ * with a server.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class Deregister : public Header {
     public:
         sockaddr_in client_;
@@ -187,6 +218,11 @@ class Deregister : public Header {
         }
 };
 
+/**
+ * This is a subclass of Header that can be sent over the network. This is used by the server
+ * to broadcast to all clients the ip and ports of all clients registered on the server.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class Directory : public Header {
     public:
         size_t num_clients_;
@@ -279,6 +315,11 @@ class Directory : public Header {
 
 };
 
+/**
+ * This is a subclass of Message that can be sent over the network. This is used get a value
+ * with a key from another node.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class Get : public Message {
     public:
         Get(sockaddr_in sender, size_t payload_size, const char* payload) : Message(sender, payload_size, payload) {
@@ -288,6 +329,11 @@ class Get : public Message {
         ~Get() { }
 };
 
+/**
+ * This is a subclass of Message that can be sent over the network. This is used get and wait for a value
+ * with a key from another node.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class GetAndWait : public Message {
     public:
         GetAndWait(sockaddr_in sender, size_t payload_size, const char* payload) : Message(sender, payload_size, payload) {
@@ -297,6 +343,11 @@ class GetAndWait : public Message {
         ~GetAndWait() { }
 };
 
+/**
+ * This is a subclass of Message that can be sent over the network. This is used put a key value pair
+ * on another node.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class Put : public Message {
     public:
         Put(sockaddr_in sender, size_t payload_size, const char* payload) : Message(sender, payload_size, payload) {
@@ -306,6 +357,11 @@ class Put : public Message {
         ~Put() { }
 };
 
+/**
+ * This is a subclass of Message that can be sent over the network. This is used to hold the response
+ * of a get or get and wait request.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ */
 class Response : public Message {
     public:
         Response(sockaddr_in sender, size_t payload_size, const char* payload) : Message(sender, payload_size, payload) {

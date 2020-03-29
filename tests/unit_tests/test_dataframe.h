@@ -221,59 +221,6 @@ TEST(testDataFrame, testDataFrameGet) {
 }
 
 /**
- * Does DataFrame set the correct values.
- */
-void test_dataframe_set_values() {
-    Key key(0, "Some_key");
-    KVStore kvs(false);
-    int size = 10;
-    String s("apple");
-    String s2("orange");
-    DataFrame* df = build_data_frame(size, s, key, kvs);
-
-    ASSERT_EQ(df->ncols(), 4);
-    ASSERT_EQ(df->nrows(), size);
-    
-    ASSERT_EQ(df->get_schema().col_type(0), 'B');
-    ASSERT_EQ(df->get_schema().col_type(1), 'I');
-    ASSERT_EQ(df->get_schema().col_type(2), 'D');
-    ASSERT_EQ(df->get_schema().col_type(3), 'S');
-
-    EXPECT_FALSE(df->get_bool(0, 1));
-    EXPECT_TRUE(df->get_bool(0, 8));
-    df->set(0, 1, true);
-    df->set(0, 8, false);
-    EXPECT_TRUE(df->get_bool(0, 1));
-    EXPECT_FALSE(df->get_bool(0, 8));
-    
-    EXPECT_EQ(df->get_int(1, 0), 0);
-    EXPECT_EQ(df->get_int(1, 4), 4);
-    df->set(1, 0, -1000);
-    df->set(1, 4, -999);
-    EXPECT_EQ(df->get_int(1, 0), -1000);
-    EXPECT_EQ(df->get_int(1, 4), -999);
-    
-    EXPECT_FLOAT_EQ(df->get_double(2, 0), 0);
-    EXPECT_FLOAT_EQ(df->get_double(2, 2), 2.0 / (1.0 * size));
-    double f1 = 1.2345001;
-    double f2 = 1920284.9;
-    df->set(2, 0, f1);
-    df->set(2, 2, f2);
-    EXPECT_FLOAT_EQ(df->get_double(2, 0), f1);
-    EXPECT_FLOAT_EQ(df->get_double(2, 2), f2);
-    
-    EXPECT_TRUE(df->get_string(3, 1)->equals(&s));
-    df->set(3, size - 1, &s2);
-    EXPECT_TRUE(df->get_string(3, size - 1)->equals(&s2));
-
-    delete df;
-}
-
-TEST(testDataFrame, testDataFrameSet) {
-    test_dataframe_set_values();
-}
-
-/**
  * DataFrame retuns the correct index based on name.
  */
 void test_dataframe_get_col() {
@@ -425,17 +372,20 @@ class Taxes : public Rower {
             // calculates the amoubt of tax for each row
             int tx = (int)r.get_int(salary) * r.get_double(rate);
             tx -= r.get_bool(isded) ? r.get_int(ded) : 0;
-            df_->set(taxes, r.get_idx(), tx);
+            r.set(taxes, tx);
+            df_->add_row(r);
             return true;
         }
 };
 
 void test_map() {
     Key key(0, "Some_key");
+    Key key2(0, "other key");
     KVStore kvs(false);
     // Creating a data frame with the right structure 
     Schema scm("IDBII");       // the schema
     DataFrame df(scm, key, &kvs);         // the data frame  
+    DataFrame df2(scm, key2, &kvs); 
 
     // populdates the DataFrame
     int size = 10;
@@ -449,14 +399,14 @@ void test_map() {
         df.add_row(r);
     }   
 
-    Taxes tx(&df);     // create our rower
+    Taxes tx(&df2);     // create our rower
     df.map(tx);   // apply it to every row
 
-    ASSERT_EQ(df.nrows(), 10);
+    ASSERT_EQ(df2.nrows(), 10);
 
     // ensures that the tax values in the DataFrame were updated
     for (int i = 0; i < size; i++) {
-        ASSERT_EQ(df.get_int(4, i), df.get_int(0, i) * df.get_double(1, i));
+        ASSERT_EQ(df2.get_int(4, i), df.get_int(0, i) * df.get_double(1, i));
     }
 }
 

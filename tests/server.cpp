@@ -9,9 +9,11 @@
 #include <assert.h>
 
 #include "../src/kvstore/network.h"
+#include "../src/util/thread.h"
 
 // The server defaults to the local machine's ip address, ip addresses passed will be ignored
 int main() {
+    assert(get_thread_count() > 1);
     Server* s = new Server("127.0.0.1");
 
     // char buf[1024]; 

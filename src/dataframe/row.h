@@ -13,6 +13,7 @@
 /*****************************************************************************
  * Fielder::
  * A field vistor invoked by Row.
+ * @note: this is still needed in order to add_row to a dataframe.
  */
 class Fielder : public Object {
     public:
@@ -38,6 +39,7 @@ class DoubleBox;
 class StringBox;
 
 // for holding values of different types inside a Row class
+// @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 class Box : public Object {
     public:
         bool has_been_set_;
@@ -48,42 +50,44 @@ class Box : public Object {
         ~Box() {}
 
         virtual void set(bool val) {
-            abort_if_not(false, "Box.set(bool) Box not implemented");
+            fail("Box.set(bool) Box not implemented");
         }
 
         virtual void set(int val) {
-            abort_if_not(false, "Box.set(int) Box not implemented");
+            fail("Box.set(int) Box not implemented");
         }
 
         virtual void set(double val) {
-            abort_if_not(false, "Box.set(double) Box not implemented");
+            fail("Box.set(double) Box not implemented");
         }
 
         virtual void set(String* val) {
-            abort_if_not(false, "Box.set(String*) Box not implemented");
+            fail("Box.set(String*) Box not implemented");
         }
         
         virtual BoolBox* as_bool() {
-            abort_if_not(false, "Box is not a boolean");
+            fail("Box is not a boolean");
             return nullptr;
         }
 
         virtual IntBox* as_int() {
-            abort_if_not(false, "Box is not a int");
+            fail("Box is not a int");
             return nullptr;
         }
 
         virtual DoubleBox* as_double() {
-            abort_if_not(false, "Box is not a double");
+            fail("Box is not a double");
             return nullptr;
         }
 
         virtual StringBox* as_string() {
-            abort_if_not(false, "Box is not a String");
+            fail("Box is not a String");
             return nullptr;
         }
 };
 
+// A Box that holds bool values
+// @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 class BoolBox: public Box {
     public:
         bool val_;
@@ -107,6 +111,8 @@ class BoolBox: public Box {
         }
 };
 
+// A Box that holds an int value
+// @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 class IntBox: public Box {
     public:
         int val_;
@@ -130,6 +136,8 @@ class IntBox: public Box {
         }
 };
 
+// a box that holds a double value
+// @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 class DoubleBox: public Box {
     public:
         double val_;
@@ -153,6 +161,8 @@ class DoubleBox: public Box {
         }
 };
 
+// a Box that holds a string value
+// @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 class StringBox: public Box {
     public:
         String* val_;
@@ -190,6 +200,7 @@ class StringBox: public Box {
  * dataframe's schema. The purpose of this class is to make it easier to add
  * read/write complete rows. Internally a dataframe hold data in columns.
  * Rows have pointer equality.
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
  */
 class Row : public Object {
     public:
@@ -218,7 +229,7 @@ class Row : public Object {
                         data_[i] = new StringBox();
                         break;                
                     default:
-                        abort_if_not(false, "Row(Schema): bad schema");
+                        fail("Row(Schema): bad schema");
                 }
             }
         }
@@ -332,7 +343,7 @@ class Row : public Object {
                         f.accept(data_[i]->as_string()->get());
                         break;                
                     default:
-                        abort_if_not(false, "Row.visit(): bad schema");
+                        fail("Row.visit(): bad schema");
                 }
             }
 
