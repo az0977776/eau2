@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include "../src/util/string.h"  
-#include "../src/dataframe/column.h"
-#include "../src/kvstore/keyvaluestore.h"
+#include "../../src/util/string.h"  
+#include "../../src/dataframe/column.h"
+#include "../../src/kvstore/keyvaluestore.h"
 
 #include "test_macros.h"
 

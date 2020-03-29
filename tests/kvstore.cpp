@@ -11,12 +11,11 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include "network.h"
-#include "../util/serial.h"
-#include "keyvalue.h"
+#include "../src/kvstore/network.h"
+#include "../src/kvstore/keyvalue.h"
+#include "../src/kvstore/keyvaluestore.h"
 
-
-#include "keyvaluestore.h"
+#include "../src/util/serial.h"
 
 
 int main(int argc, char** argv) {

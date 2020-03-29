@@ -7,11 +7,9 @@
 
 #include "../util/object.h"
 #include "../util/string.h"
+#include "../util/constant.h"
 
 #include <pthread.h>
-
-static const char* SERVER_IP = "127.0.0.1";
-// static const size_t KVSTORE_CACHE_SIZE = 4;
 
 class KVStore;
 class KVStoreMessageHandler : public MessageHandler {
@@ -57,7 +55,7 @@ class KVStore : public Object {
                 // this is checked in KVStoreMessageHandler.handle_get_and_wait
                 node_index_ = -1; 
                 // create network
-                client_ = new Client(SERVER_IP, SERVER_IP, new KVStoreMessageHandler(this));
+                client_ = new Client(SERVER_IP, CLIENT_IP, new KVStoreMessageHandler(this));
                 node_index_ = client_->get_index();
             } else {
                 client_ = nullptr;
@@ -226,7 +224,7 @@ class KVStore : public Object {
 // KVStoreMessageHandler methods
 
 void KVStoreMessageHandler::wait_for_node_index() {
-    while (kvs_->node_index() == -1) {
+    while (kvs_->node_index() == MAX_SIZE_T) {
         sleep(1);
     } 
 }

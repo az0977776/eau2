@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
-#include "../src/util/string.h"  
-#include "../src/dataframe/dataframe.h"
-#include "../src/dataframe/schema.h"
-#include "../src/dataframe/column.h"
-#include "../src/dataframe/row.h"
+#include "../../src/util/string.h"  
+#include "../../src/dataframe/dataframe.h"
+#include "../../src/dataframe/schema.h"
+#include "../../src/dataframe/column.h"
+#include "../../src/dataframe/row.h"
 
 #include "test_macros.h"
 

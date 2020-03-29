@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-#include "../src/dataframe/dataframe.h"
-#include "../src/dataframe/sorer.h"
+#include "../../src/dataframe/dataframe.h"
+#include "../../src/dataframe/sorer.h"
 
 /**
  * This is a Dataframe Rower that will compute the fibonacci number based on
@@ -60,7 +60,7 @@ class Fibonacci : public Rower {
 
 void run_map_tests() {
     KVStore kvs(false);
-    SOR sorer("../data/data.sor", &kvs);
+    SOR sorer("../../data/data.sor", &kvs);
 
     DataFrame* df = sorer.read();
     

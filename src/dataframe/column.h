@@ -12,7 +12,7 @@
 #include "../kvstore/keyvalue.h"
 #include "../kvstore/keyvaluestore.h"
 
-static const size_t ARRAY_STARTING_CAP = 4;
+#include "../util/constant.h"
 
 enum ColumnType {
     UNKNOWN = 0,
@@ -121,14 +121,14 @@ class DoubleColumn;
 class IntColumn;
 class BoolColumn;
 
-static const size_t CHUNK_SIZE = sizeof(size_t) * 128;  // on 64-bit machine this is 8 * 128 = 1024
-
 /**************************************************************************
  * Column ::
  * Represents one column of a data frame which holds values of a single type.
  * This abstract class defines methods overriden in subclasses. There is
  * one subclass per element type. Columns are mutable, equality is pointer
- * equality. */
+ * equality. 
+ * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
+ * */
 class Column : public Object {
     public:
         KVStore* kv_;  // external

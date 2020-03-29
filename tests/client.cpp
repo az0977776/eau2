@@ -11,9 +11,9 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include "network.h"
-#include "../util/serial.h"
-#include "keyvalue.h"
+#include "../../src/kvstore/network.h"
+#include "../../src/util/serial.h"
+#include "../../src/kvstore/keyvalue.h"
 
 // this is a class that has a callback method to be called when a message is returned
 class ClientMessageHandler : public MessageHandler {

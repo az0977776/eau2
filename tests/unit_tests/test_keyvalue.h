@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "../src/kvstore/keyvalue.h"
+#include "../../src/kvstore/keyvalue.h"
 
 #include "test_macros.h"
 

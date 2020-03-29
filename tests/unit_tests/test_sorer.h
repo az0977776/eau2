@@ -1,10 +1,10 @@
 //lang:cpp
 #pragma once
 
-#include "../src/util/string.h"
-#include "../src/dataframe/sorer.h"
-#include "../src/util/helper.h"
-#include "../src/dataframe/column.h"
+#include "../../src/util/string.h"
+#include "../../src/dataframe/sorer.h"
+#include "../../src/util/helper.h"
+#include "../../src/dataframe/column.h"
 
 /**
  * These functions are used for testing.
@@ -68,7 +68,7 @@ bool compare_array_chars(char** actual, const char** expected, size_t len) {
 
 bool parse_row_wrapper(const char* input, const char** expected) {
     KVStore kvs(false);
-    SOR* reader = new SOR("../data/test.sor", &kvs);
+    SOR* reader = new SOR("../../data/test.sor", &kvs);
     char buf[2048];
 
     size_t num_fields = -1;
@@ -85,7 +85,7 @@ bool parse_row_wrapper(const char* input, const char** expected) {
 
 bool parse_field_wrapper(const char* input, const char* output, int* len) {
     KVStore kvs(false);
-    SOR* reader = new SOR("../data/test.sor", &kvs);
+    SOR* reader = new SOR("../../data/test.sor", &kvs);
     char buf[2048];
 
     char* temp = reader->parse_field_(strcpy(buf, input), len);
@@ -147,7 +147,7 @@ void test_parse_field_() {
 
 void test_infer_columns_() {
     KVStore kvs(false);
-    SOR reader("../data/test.sor", &kvs);
+    SOR reader("../../data/test.sor", &kvs);
 
     Schema* schema = reader.infer_columns_(0, 10000);
 
@@ -165,7 +165,7 @@ void test_infer_columns_() {
 
 void test_read() {
     KVStore kvs(false);
-    SOR reader("../data/test.sor", &kvs);
+    SOR reader("../../data/test.sor", &kvs);
 
     DataFrame* df = reader.read(0, 10000);
     Schema schema = df->get_schema();
@@ -208,7 +208,7 @@ void test_read() {
 
 void test_partial_file_read() {
     KVStore kvs(false);
-    SOR reader("../data/test.sor", &kvs);
+    SOR reader("../../data/test.sor", &kvs);
 
     DataFrame* df = reader.read(50, 10000);
     Schema schema = df->get_schema();
@@ -229,7 +229,7 @@ void test_partial_file_read() {
 
     OK("start middle of file read test.");
     
-    SOR reader2("../data/test.sor", &kvs);
+    SOR reader2("../../data/test.sor", &kvs);
 
     DataFrame* df2 = reader2.read(0, 85);
     Schema schema2 = df2->get_schema();

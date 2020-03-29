@@ -17,11 +17,7 @@
 #include "../util/string.h"
 #include "../util/serial.h"
 #include "../util/thread.h"
-
-static const int SERVER_LISTEN_PORT = 8080;
-static const int CLIENT_NUM = 5;
-static const int BUFF_LEN = 1024;
-static const size_t MAX_SIZE_T = -1;
+#include "../util/constant.h"
 
 // to be implemented from
 // this is a class that has a callback method to be called when a message is returned
@@ -645,7 +641,7 @@ class Client : public Network {
             current_node_idx_ = current_dir_->index_of(client_ip, listening_port_);
             abort_if_not(current_node_idx_ < CLIENT_NUM, "Failed to find client in directory");
 
-            printf("Current node idx: %zu\n", current_node_idx_);
+            // printf("Current node idx: %zu\n", current_node_idx_);
 
             pthread_mutex_unlock(&lock_);
         }

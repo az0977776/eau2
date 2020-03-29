@@ -11,9 +11,7 @@
 #include "../util/object.h"
 #include "../util/helper.h"
 
-// The maximum length of a line buffer. No lines over 4095 bytes
-static const int buff_len = 4096 * 16; 
-static const int infer_line_count = 500;
+#include "../util/constant.h"
 
 // Reads a file and determines the schema on read
 class SOR : public Object {
