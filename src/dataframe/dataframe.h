@@ -19,7 +19,7 @@ Helper classes for DataFrame
 *****************************************************************************/
 /*
  * DataFrameAddFielder is a subclass of Fielder
- * Used to help add Rows to a DataFrame
+ * Used to add Rows to a DataFrame
  * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
  */
 class DataFrameAddFielder : public Fielder {

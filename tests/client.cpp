@@ -127,15 +127,6 @@ int main(int argc, char** argv) {
                 port = atoi(strtok(NULL, " "));
                 msg = strtok(NULL, "\n");
                 c->send_string(ip, port, msg);
-
-                /*
-                    // Getting a value associated with a key on another key value store client
-                    char* get(size_t to_node_idx, size_t payload_len, char* payload, size_t &return_msg_len) {
-                        Get message(get_sockaddr(), payload_len, payload);
-                        
-                        return send_to_node_(to_node_idx, &message, return_msg_len);
-                    }
-                */
             } else if (strcmp(pch, "get") == 0) {
                 ip = strtok(NULL, " ");
                 msg = strtok(NULL, "\n");
@@ -148,15 +139,6 @@ int main(int argc, char** argv) {
                     printf("Got a return message of size %zu: %s\n", resp_size, rv);
                     delete rv;
                 }
-                /*
-                    void put(size_t to_node_idx, size_t payload_len, char* payload) {
-                        Put message(get_sockaddr(), payload_len, payload);
-                        size_t return_msg_len = 0;
-                        
-                        char* rv = send_to_node_(to_node_idx, &message, return_msg_len);
-                        abort_if_not(return_msg_len == 0 && rv == nullptr, "Got a response from a put message");
-                    }
-                */
             } else if (strcmp(pch, "put") == 0) {
                 ip = strtok(NULL, " ");
                 key = strtok(NULL, " ");
