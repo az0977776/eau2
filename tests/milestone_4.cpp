@@ -2,16 +2,9 @@
 #include <stdio.h>
 
 #include "../src/application.h"
+
 #include "../src/dataframe/row.h"
-
-class Writer : public Rower {
-    
-};
-
-class Reader : public Rower {
-    
-};
-
+#include "../src/dataframe/reader_writer.h"
 
 class FileReader : public Writer {
     public:
@@ -33,7 +26,7 @@ class FileReader : public Writer {
 
         /** Reads next word and stores it in the row. Actually read the word.
          While reading the word, we may have to re-fill the buffer  */
-        bool accept(Row & r) override {
+        void visit(Row & r) override {
             assert(i_ < end_);
             assert(! isspace(buf_[i_]));
             size_t wStart = i_;
@@ -49,10 +42,9 @@ class FileReader : public Writer {
             }
             buf_[i_] = 0;
             String word(buf_ + wStart, i_ - wStart);
-            r.set(0, word);
+            r.set(0, &word);
             ++i_;
             skipWhitespace_();
-            return true;
         }
     
         /** Returns true when there are no more words to read.  There is nothing
@@ -92,35 +84,46 @@ class FileReader : public Writer {
  
  
 /****************************************************************************/
+// convert a dataframe with schema('S') to a HashMap of String -> count
 class Adder : public Reader {
     public:
-        SIMap& map_;  // String to Num map;  Num holds an int
+        Map<String,size_t>& map_;  // String to Num map;  Num holds an int
         
-        Adder(SIMap& map) : map_(map)  {}
+        Adder(Map<String, size_t>& map) : map_(map)  {}
         
         bool visit(Row& r) override {
-            String* word = r.get_string(0);
-            assert(word != nullptr);
-            Num* num = map_.contains(*word) ? map_.get(*word) : new Num();
-            assert(num != nullptr);
-            num->v++;
-            map_.set(*word, num);
+            // get the string from the dataframe
+            String* word = r.get_string(0);  // Who owns this Adder or dataframe? TODO
+            abort_if_not(word != nullptr, "Adder got a string that was nullptr");
+
+            // increment the ocunt of the word in the map
+            size_t* count = map_.get(word);
+            if (count == nullptr) {
+                *count = 0; // if it does not exist, then the count of that word is 0
+                word = word->clone();
+            }
+            (*count)++; // increment
+            
+            map_.add(word, count);
             return false;
         }
 };
  
 /***************************************************************************/
+// convert a HashMap of String -> count to a Dataframe with schema('SI')
 class Summer : public Writer {
     public:
-        SIMap& map_;
-        size_t i = 0;
-        size_t j = 0;
+        Map<String,size_t>& map_;
+        String** keys_;
+        size_t key_index = 0;
         size_t seen = 0;
 
-        Summer(SIMap& map) : map_(map) {}
+        Summer(Map<String,size_t>& map) : map_(map) {
+            keys_ = map_.keys();
+        }
 
         void next() {
-            if (i == map_.capacity_ ) return;
+            if (key_index == map_.size() ) return;
             if ( j < map_.items_[i].keys_.size() ) {
                 j++;
                 ++seen;
@@ -168,10 +171,9 @@ class WordCount: public Application {
         static const size_t BUFSIZE = 1024;
         Key in;
         KeyBuff kbuf;
-        SIMap all;
+        Map<String,size_t> all;
 
-        WordCount(size_t idx, NetworkIfc & net):
-        Application(idx, net), in("data"), kbuf(new Key("wc-map-",0)) { }
+        WordCount() : Application(), in("data"), kbuf(new Key(0, "wc-map-")) { }
 
         /** The master nodes reads the input, then all of the nodes count. */
         void run_() override {
@@ -186,21 +188,22 @@ class WordCount: public Application {
         /** Returns a key for given node.  These keys are homed on master node
          *  which then joins them one by one. */
         Key* mk_key(size_t idx) {
-            Key * k = kbuf.c(idx).get();
-            LOG("Created key " << k->c_str());
+            Key * k = kbuf.get(idx);
+            printf("Created key: ");
+            k->print();
             return k;
         }
 
         /** Compute word counts on the local node and build a data frame. */
         void local_count() {
-            DataFrame* words = (kv.waitAndGet(in));
-            p("Node ").p(index).pln(": starting local count...");
-            SIMap map;
-            Adder add(map);
-            words->local_map(add);
+            DataFrame* words = getAndWait(in);
+            p("Node ").p(this_node()).pln(": starting local count...");
+            Map<String,size_t> map;
+            Adder add(map);  // Adder is a Reader
+            words->local_map(add);  // local map takes a Reader
             delete words;
-            Summer cnt(map);
-            delete DataFrame::fromVisitor(mk_key(index), &kv, "SI", cnt);
+            Summer cnt(map);  // a writer
+            delete DataFrame::fromVisitor(mk_key(this_node()), &kv, "SI", cnt);
         }
 
         /** Merge the data frames of all nodes */
@@ -208,19 +211,19 @@ class WordCount: public Application {
             if (index != 0) 
                 return;
             pln("Node 0: reducing counts...");
-            SIMap map;
+            Map<String, size_t> map;
             Key* own = mk_key(0);
-            merge(kv.get(*own), map);
+            merge(get(*own), map);
             for (size_t i = 1; i < arg.num_nodes; ++i) { // merge other nodes
                 Key* ok = mk_key(i);
-                merge(kv.waitAndGet(*ok), map);
+                merge(getAndWait(*ok), map);
                 delete ok;
             }
             p("Different words: ").pln(map.size());
             delete own;
         }
 
-        void merge(DataFrame* df, SIMap& m) {
+        void merge(DataFrame* df, Map<String,size_t>& m) {
             Adder add(m);
             df->map(add);
             delete df;

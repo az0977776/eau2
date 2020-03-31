@@ -13,6 +13,8 @@ class Key : public Object {
         size_t node_index_;  // the node where the value is stored
         String* key_; // owned
 
+        Key(const char* key) : Key(0, key) {}
+
         Key(size_t node_index, const char* key) {
             node_index_ = node_index;
             key_ = new String(key);
@@ -168,3 +170,35 @@ class Value : public Object {
             }
         }
 };
+
+class KeyBuff : public Object {
+    public:
+        String* base_;
+        size_t node_index_;
+
+        KeyBuff(Key* k) {
+            base_ = k->get_name();
+            node_index_ = k->get_index();
+            delete k;
+        } 
+
+        ~KeyBuff() {
+            delete base_;
+        }
+
+        Key* get(const char* suffix) {
+            char* buf = new char[base_->size() + strlen(suffix) + 1];
+            memcpy(buf, base_->c_str(), base_->size());
+            memcpy(buf + base_->size(), suffix, strlen(suffix) + 1);
+            Key* ret = new Key(node_index_, buf);
+            delete buf;
+            return ret;
+        }
+
+        Key* get(size_t num) {
+            char buf[3 + 2 * sizeof(size_t) + 1];
+            memset(buf, 0, 1 + 2 * sizeof(size_t) + 1);
+            sprintf(buf, ":0x%X", (unsigned int)num);
+            return get(buf);
+        }
+}

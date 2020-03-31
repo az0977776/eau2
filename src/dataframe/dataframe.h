@@ -6,6 +6,7 @@
 #include "row.h"
 #include "schema.h"
 #include "column.h"
+#include "reader_writer.h"
 
 #include "../util/object.h"
 #include "../util/string.h"
@@ -394,7 +395,13 @@ class DataFrame : public Object {
             Row row(schema_);
             for (size_t i = start; i < end; i++) {
                 fill_row(i, row);
-                r.accept(row);
+                r.accept(row);  
+                // Who owns the strings in the fill_row Rower or dataframe? TODO
+                // find all strings and delete ...
+                // row.delete_strings();
+                // or - the rower must delete all strings that it gets
+                // TODO:
+                // should row box clone on set??
             }
             add_self_to_kv_();
         }
@@ -402,6 +409,11 @@ class DataFrame : public Object {
         /** Visit rows in order */
         void map(Rower& r) {
             map_rows_(0, nrows(), r);
+        }
+
+        void local_map(Rower& rower) {
+            // maps over rows that are in this node ownly
+            // calls rower.accept() row  -- ignores the return value
         }
 
         /** Print the dataframe in SoR format to standard output. */
@@ -487,8 +499,8 @@ class DataFrame : public Object {
          * */
         void pmap(Rower& r);
 
-        static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, String** vals) {
-            Schema s("S");
+        template <class T>
+        static DataFrame* fromArray_(Key* k, KVStore* kvs, size_t size, Schema &s, T* vals) {
             DataFrame* df = new DataFrame(s, *k, kvs, false);
             Row r(s);
 
@@ -500,51 +512,26 @@ class DataFrame : public Object {
             df->add_self_to_kv_();
             
             return df;
+        }
+
+        static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, String** vals) {
+            Schema s("S");
+            return DataFrame::fromArray_<String*>(k, kvs, size, s, vals);
         } 
 
         static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, double* vals) {
             Schema s("D");
-            DataFrame* df = new DataFrame(s, *k, kvs, false);
-            Row r(s);
-
-            for (size_t i = 0; i < size; i++) {
-                r.set(0, vals[i]);
-                df->add_row(r, false);
-            }
-
-            df->add_self_to_kv_();
-
-            return df;
+            return DataFrame::fromArray_<double>(k, kvs, size, s, vals);
         } 
 
         static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, int* vals) {
             Schema s("I");
-            DataFrame* df = new DataFrame(s, *k, kvs, false);
-            Row r(s);
-
-            for (size_t i = 0; i < size; i++) {
-                r.set(0, vals[i]);
-                df->add_row(r, false);
-            }
-
-            df->add_self_to_kv_();
-
-            return df;
+            return DataFrame::fromArray_<int>(k, kvs, size, s, vals);
         } 
 
         static DataFrame* fromArray(Key* k, KVStore* kvs, size_t size, bool* vals) {
             Schema s("B");
-            DataFrame* df = new DataFrame(s, *k, kvs, false);
-            Row r(s);
-
-            for (size_t i = 0; i < size; i++) {
-                r.set(0, vals[i]);
-                df->add_row(r, false);
-            }
-
-            df->add_self_to_kv_();
-
-            return df;
+            return DataFrame::fromArray_<bool>(k, kvs, size, s, vals);
         } 
 
         static DataFrame* fromScalar(Key* k, KVStore* kvs, String* val) {
@@ -562,6 +549,21 @@ class DataFrame : public Object {
         static DataFrame* fromScalar(Key* k, KVStore* kvs, bool val) {
             return DataFrame::fromArray(k, kvs, 1, &val);
         } 
+
+        static DataFrame* fromVisitor(Key* k, KVStore* kvs, const char* schema, Writer& writer) {
+            Schema s(schema);
+            DataFrame* df = new DataFrame(s, *k, kvs, false);
+            Row row(s);
+            
+            while (!writer.done()) {
+                writer.visit(row); // updates the row
+                df->add_row(row);
+            }
+
+            df->add_self_to_kv_();
+
+            return df;
+        }
 
         static DataFrame* deserialize(const char* buf, KVStore* kvs) {
             Schema schema;
