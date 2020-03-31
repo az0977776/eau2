@@ -57,14 +57,18 @@ class Array : public Object{
             }
         }
 
-        virtual void push(T* obj) {
-            check_reallocate_();
-            values_[len_] = obj;  // not copying on add ...
-            len_++;
+        virtual void set(size_t index, T* val) {
+            if (index > len_) {
+                push_back(val);
+            } else {
+                values_[index] = val;
+            }
         }
 
         virtual void push_back(T* obj) {
-            push(obj);
+            check_reallocate_();
+            values_[len_] = obj;  // not copying on add ...
+            len_++;
         }
 
         // returns the first index of a given object, or -1 if the array does not contain the object

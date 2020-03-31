@@ -1,86 +1,75 @@
 //lang::CwC
 #pragma once
 
-#include "keyvalue.h"
-
-#include "../util/string.h"
-#include "../util/object.h"
-#include "../util/array.h"
+#include "string.h"
+#include "object.h"
+#include "array.h"
 
 // represents an array that is used for bucket in a hashmap
 // each even index i is a key and i+1 is the value assocaited with the key
 // does not own the objects passed into the array
 // @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
-class Bucket : public Array<Object> {
+template <class K, class V>
+class Bucket : public Object {
     public:
-        Bucket() : Array() {}
+        Array<K>* keys_;
+        Array<V>* values_;
+        
+        Bucket() {
+            keys_ = new Array<K>();
+            values_ = new Array<V>();
+        }
 
-        // checks if the underlying array needs to be reallocated
-        // does so if true
-        void check_reallocate_() {
-            // since each object added to the array is a key then a value
-            // check len_ + 1 to account for both objects added
-            if (len_ + 1 >= cap_) {
-                cap_*=2;
-                Object **temp = new Object*[cap_];
-                for (size_t i = 0; i < len_; i++) {
-                    temp[i] = values_[i];
-                }
-                delete[] values_;
-                values_ = temp;
-            }
+        ~Bucket() {
+            delete keys_;
+            delete values_;
         }
 
         // removes a key value pair from the bucket array
         // takes in the key and returns the value
         // nullptr if o is not a valid key
-        Object* remove_kvpair(Object *o) {
-            size_t idx = len_;
-            Object *val = nullptr;
-            // find the key value pair to remove
-            for (size_t i = 0; i < len_; i+=2) {
-                if (o->equals(values_[i])) {
-                    idx = i;
-                    val = values_[i+1];
-                    break;
-                }
-            }
-
-            if (val == nullptr) {
+        V* remove_kvpair(K* key) {
+            int idx = keys_->indexOf(key);
+            if (idx < 0) {
                 return nullptr;
             }
 
-            // shift all remaining values left two
-            for (size_t i = idx; i < len_ - 2; i++) {
-                values_[i] = values_[i+2];
-            }
-            return val;
+            keys_->remove(idx);
+            return values_->remove(idx);
         }
 
         // adds a key value pair to the bucket array
-        void add_kvpair(Object *k, Object *v) {
-            int k_idx = indexOf(k);
+        void add_kvpair(K* k, V* v) {
+            int k_idx = keys_->indexOf(k);
             // if the key already exists in the bucket, overwrite the value
             if (k_idx >= 0) {
-                values_[k_idx+1] = v;
+                // does not delete the value it replaces
+                values_->set(k_idx, v);
             } else {
                 // does not exist -> add it to the end
-                check_reallocate_();
-                values_[len_] = k;
-                values_[len_+1] = v;
-                len_+=2;
+                keys_->push_back(k);
+                values_->push_back(v);
             }
         }
 
         // gets the value for the key in the bucket array
         // returns nullptr if not found
-        Object* get_val(Object* k) {
-            for (size_t i = 0; i < len_; i+=2) {
-                if (values_[i]->equals(k)) {
-                    return values_[i+1];
-                }
-            }
-            return nullptr;
+        V* get_val(K* k) {
+            int idx = keys_->indexOf(k);
+            return idx < 0 ? nullptr : values_->get(idx);
+        }
+
+        V* get_val(size_t idx) {
+            return values_->get(idx);
+        }
+
+        K* get_key(size_t idx) {
+            return keys_->get(idx);
+        }
+
+        size_t size() {
+            abort_if_not(keys_->size() == values_->size(), "Bucket key array size does not match value array size");
+            return keys_->size();
         }
 };
 
@@ -89,9 +78,10 @@ class Bucket : public Array<Object> {
 * Map does not own any objects passed to it.
 * @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 */
+template<class K, class V>
 class Map : public Object {
     public:
-        Bucket **buckets_;
+        Bucket<K, V> **buckets_;
         // the ith key in the keys_ array corresponds with the ith value in the values_ array
         // current number of buckets
         size_t num_buckets_;
@@ -100,9 +90,9 @@ class Map : public Object {
         /* The constructor*/
         Map() { 
             num_buckets_ = 1024;
-            buckets_ = new Bucket*[num_buckets_];
+            buckets_ = new Bucket<K,V>*[num_buckets_];
             for (size_t i = 0; i < num_buckets_; i++) {
-                buckets_[i] = new Bucket();
+                buckets_[i] = new Bucket<K, V>();
             }
             size_ = 0;
         }
@@ -128,7 +118,7 @@ class Map : public Object {
         * @param key is the object to map the value to
         * @param value the object to add to the Map
         */
-        void add(Key* key, Value* value) {
+        void add(K* key, V* value) {
             // if the key does not exist in the bucket, add key and value to their array
             size_t h = key->hash() % num_buckets_;
             Object* o = buckets_[h]->get_val(key);
@@ -146,9 +136,9 @@ class Map : public Object {
         * @param key the key to get the value from
         * @return the value associated with the key
         */
-        Value* get(Key* key) {
+        V* get(K* key) {
             size_t h = key->hash() % num_buckets_;
-            return dynamic_cast<Value*>(buckets_[h]->get_val(key));
+            return buckets_[h]->get_val(key);
         }
 
         /**
@@ -156,33 +146,33 @@ class Map : public Object {
         * @param key the key
         * @return the value of the element removed
         */
-        Value* pop_item(Key* key) {
+        V* pop_item(K* key) {
             size_t h = key->hash() % num_buckets_;
-            Value *ret = dynamic_cast<Value*>(buckets_[h]->remove_kvpair(key));
+            V* ret = buckets_[h]->remove_kvpair(key);
             return ret;
         }
 
-        Key** keys() {
-            Bucket* bucket = nullptr;
-            Key** ret = new Key*[size_];
+        K** keys() {
+            Bucket<K,V>* bucket = nullptr;
+            K** ret = new K*[size_];
             size_t counter = 0;
             for (size_t i = 0; i < num_buckets_; i++) {
                 bucket = buckets_[i];
-                for (size_t j = 0; j < bucket->size(); j+=2) {
-                    ret[counter++] = dynamic_cast<Key*>(bucket->get(j));  // this is the key                      
+                for (size_t j = 0; j < bucket->size(); j++) {
+                    ret[counter++] = bucket->get_key(j);                      
                 }
             }
             return ret;
         }
 
-        Value** values() {
-            Bucket* bucket = nullptr;
-            Value** ret = new Value*[size_];
+        V** values() {
+            Bucket<K,V>* bucket = nullptr;
+            V** ret = new V*[size_];
             size_t counter = 0;
             for (size_t i = 0; i < num_buckets_; i++) {
                 bucket = buckets_[i];
-                for (size_t j = 1; j < bucket->size(); j+=2) {
-                    ret[counter++] = dynamic_cast<Value*>(bucket->get(j));  // this is the key                      
+                for (size_t j = 0; j < bucket->size(); j++) {
+                    ret[counter++] = bucket->get_val(j);  // this is the key                      
                 }
             }
             return ret;
@@ -196,15 +186,15 @@ class Map : public Object {
                 size_t old_num_buckets = num_buckets_;
                 size_t new_num_buckets = 2 * num_buckets_;
                 
-                Bucket** new_buckets = new Bucket*[new_num_buckets];
+                Bucket<K,V>** new_buckets = new Bucket<K,V>*[new_num_buckets];
                 for (size_t i = 0; i < new_num_buckets; i++) {
-                    new_buckets[i] = new Bucket();
+                    new_buckets[i] = new Bucket<K, V>();
                 }
 
                 for (size_t i = 0; i < old_num_buckets; i++) {
-                    for (size_t j = 0; j < buckets_[i]->size(); j+=2) {
-                        Key* k = dynamic_cast<Key*>(buckets_[i]->get(j));  // this is the key
-                        Value* v = dynamic_cast<Value*>(buckets_[i]->get(j+1));  // this is the value
+                    for (size_t j = 0; j < buckets_[i]->size(); j++) {
+                        K* k = buckets_[i]->get_key(j); 
+                        V* v = buckets_[i]->get_val(j); 
 
                         h = k->hash() % new_num_buckets;
                         new_buckets[h]->add_kvpair(k, v);                        

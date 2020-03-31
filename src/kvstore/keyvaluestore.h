@@ -2,7 +2,7 @@
 #pragma once
 
 #include "network.h"
-#include "map.h"
+#include "../util/map.h"
 #include "keyvalue.h"
 
 #include "../util/object.h"
@@ -45,7 +45,7 @@ class KVStore : public Object {
         bool server_; 
         
         // map of local Key -> Value
-        Map map_;
+        Map<Key, Value> map_;
         pthread_mutex_t lock_; // this locks the map of local values
         
         size_t node_index_;
