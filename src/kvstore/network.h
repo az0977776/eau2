@@ -433,7 +433,7 @@ class Server : public Network {
         }
 
         ~Server() {
-            printf("Server shutting down.\n");
+            printf("[SERVER] Shutting down.\n");
             shutdown_clients();
 
             // set the quitting flag and then wait for the listening thead to finish
@@ -474,14 +474,12 @@ class Server : public Network {
         String* get_client_infos() {
             StrBuff str_buff;
 
-            pthread_mutex_lock(&lock_);
             for (size_t i = 0; i < client_count_; i++) {
                 String *s = get_client_info(i);
                 str_buff.c(*s).c(",");
                 delete s;
             }
 
-            pthread_mutex_unlock(&lock_);
             return str_buff.get();
         }
 
@@ -507,7 +505,6 @@ class Server : public Network {
 
         // send a new directory to each client registered with this server
         void broadcast_directory() {
-            pthread_mutex_lock(&lock_);
             Directory dir(get_sockaddr(), client_count_, client_info_);
 
             int fd;
@@ -519,8 +516,6 @@ class Server : public Network {
 
                 close(fd);
             }
-
-            pthread_mutex_unlock(&lock_);
         }
 
         // send a shudown message to each client registered with this server
@@ -558,7 +553,7 @@ class Server : public Network {
                         client_info_[client_count_++] = r->get_sender();
 
                         String* client = get_client_info(client_count_-1);
-                        pthread_mutex_unlock(&lock_);
+                        
                         printf("[SERVER] Registering new client ip: %s\n", client->c_str());
                         delete client;
 
@@ -567,8 +562,13 @@ class Server : public Network {
                         printf("[SERVER] Current client ips: %s\n", client_ipps->c_str());
                         delete client_ipps;
 
-                        // boradcast to all clients
-                        broadcast_directory();
+                        // broadcast to all clients
+                        printf("[SERVER] currently %zu clients are connected\n", client_count_);
+                        
+                        if (client_count_ == CLIENT_NUM) {
+                            broadcast_directory();
+                        }
+                        pthread_mutex_unlock(&lock_);
                     }
                     break;
                 case MsgKind::DEREGISTER:
@@ -588,15 +588,15 @@ class Server : public Network {
                         for ( ; idx < client_count_; idx++) {
                             client_info_[idx] = client_info_[idx + 1];
                         }
-                        pthread_mutex_unlock(&lock_);
 
                         // just print the current ips for debugging
                         String *client_ipps = get_client_infos();
                         printf("[SERVER] Current client ips: %s\n", client_ipps->c_str());
                         delete client_ipps;
 
-                        // boradcast to all clients
+                        // broadcast to all clients
                         broadcast_directory();
+                        pthread_mutex_unlock(&lock_);
                     }
                     break;
                 default:
@@ -651,7 +651,6 @@ class Client : public Network {
             // blocks until current_dir_ is set
             // when this returns, this thread has the lock
             wait_for_dir_();
-      
             current_node_idx_ = current_dir_->index_of(client_ip, listening_port_);
             abort_if_not(current_node_idx_ < CLIENT_NUM, "Failed to find client in directory");
 
@@ -832,7 +831,7 @@ class Client : public Network {
                 }
                 case MsgKind::SHUTDOWN:
                 {
-                    printf("Shutting down\n");
+                    printf("[CLIENT] Shutting down\n");
                     // TODO: clean up main thread instead of exiting
                     exit(0);
                     break;

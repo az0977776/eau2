@@ -220,3 +220,14 @@ What needs to be done:
 - Distribute the column chunks evenly across all nodes on the network
 - speed check (ensure every get is "fast")
 - improve on caching
+
+
+
+
+
+
+
+
+// the cached chunk is for both gets and puts, currently it does not update
+// if the remote chunk is updated (no cache invalidation) and will always 
+// overwrite whatever is in the kvstore when this chunk is commited

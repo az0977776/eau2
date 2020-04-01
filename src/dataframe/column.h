@@ -132,7 +132,7 @@ class BoolColumn;
 class Column : public Object {
     public:
         KVStore* kv_;  // external
-        String* col_name_;  // owned
+        KeyBuff* key_buff_;  // owned
         Array<Key>* chunk_keys_;
 
         size_t cached_chunk_idx_;
@@ -144,10 +144,13 @@ class Column : public Object {
         Column(size_t len, KVStore* kv, String* col_name) {
             len_ = len;
             kv_ = kv;
-            col_name_ = col_name->clone();
+            key_buff_ = new KeyBuff(col_name);
 
             cached_chunk_idx_ = 0;
             cached_chunk_value_ = nullptr; // owned by the column
+            // the cached chunk is for both gets and puts, currently it does not update
+            // if the remote chunk is updated (no cache invalidation) and will always 
+            // overwrite whatever is in the kvstore when this chunk is commited
         }
 
         Column(String* col_name, KVStore* kv) : Column(0, kv, col_name) {
@@ -164,7 +167,7 @@ class Column : public Object {
                 delete cached_chunk_value_;
             }
 
-            delete col_name_;
+            delete key_buff_;
             for (size_t i = 0; i < chunk_keys_->size(); i++) {
                 delete chunk_keys_->get(i);
             }
@@ -187,32 +190,36 @@ class Column : public Object {
             if (len_ % CHUNK_SIZE == 0) {
                 size_t chunk_idx = get_chunk_idx(len_);
 
-                char* new_chunk_key = generate_chunk_name(chunk_idx);
-
-                Key* k = new Key(0, new_chunk_key);
+                Key* k = generate_chunk_key(chunk_idx);
                 Value v(initial_chunk_size);
                 kv_->put(*k, v);
 
                 chunk_keys_->push_back(k);
-
-                delete[] new_chunk_key;
             }
         }
 
+        // puts the cached value into the kv store
+        void commit_cache() {
+            put_(cached_chunk_idx_, *cached_chunk_value_);
+        }
+
         template <class T>
-        void push_back_(T val) {
+        void push_back_(T val, bool commit) {
             check_and_reallocate_(CHUNK_SIZE * sizeof(T));
             bool owned = false;
             size_t chunk_idx = get_chunk_idx(len_);
             size_t item_idx = get_item_idx(len_);
 
+            // if getting a chunk with a different chunk_index than the cached chunk
+            // index, function get_chunk_ will commit the old cached value
             Value* value = get_chunk_(chunk_idx, owned);
             char* v = value->get();
             memcpy(v + item_idx * sizeof(T), &val, sizeof(T));
 
-            Value new_value(CHUNK_SIZE * sizeof(T), v);
-
-            put_(chunk_idx, new_value);
+            // if commit is true put the cached value into the KVStore
+            if (commit){
+                commit_cache();
+            }
 
             len_++;
             if (owned) {
@@ -244,48 +251,28 @@ class Column : public Object {
             kv_->put(*chunk_key, value);
         }
 
-        // for debugging
-        void print_chunk_keys() {
-            printf("Chunk keys for Column: %s\n", col_name_->c_str());
-            for (size_t i = 0; i < chunk_keys_->size(); i++) {
-                printf("   %s\n", chunk_keys_->get(i)->key_->c_str());
-            }
-        }
-
         // colname:0x<hex_representation>
-        // each byte needs two characters to represent
-        char* generate_chunk_name(size_t chunk_idx) {
-            size_t col_name_len = col_name_->size();
-            char* ret = new char[col_name_len + 3 + (sizeof(size_t) * 2)]; 
-            memcpy(ret, col_name_->c_str(), col_name_len);
-            ret[col_name_len] = ':';
-            sprintf(ret+col_name_len+1, "0x%X", (unsigned int)chunk_idx);
-            return ret;
+        Key* generate_chunk_key(size_t chunk_idx) {
+            key_buff_->set_node_index(chunk_idx % kv_->num_nodes());
+            return key_buff_->get(chunk_idx);
         }
 
         // chunk returned is owned by this column 
         Value* get_chunk_(size_t chunk_idx, bool &owned) {
-            // if getting the latest chunk (not read-only yet)
-            if ((chunk_idx + 1) * CHUNK_SIZE > len_) {
-                // always re-get the last chunk of the column because it could have changed and don't cache
-                Key* chunk_key = chunk_keys_->get(chunk_idx);
-                return kv_->get(*chunk_key, owned);
-            // if getting a read-only chunk
-            } else {
-                // if cache is empty or if the cached value's idx is not the same
-                // get the value from the kvstore and cache it
-                if (cached_chunk_value_ == nullptr || cached_chunk_idx_ != chunk_idx) {
-                    if (cached_chunk_value_ != nullptr) {
-                        // delete the cached Value that is owned by this column
-                        delete cached_chunk_value_;
-                    }
-                    cached_chunk_idx_ = chunk_idx;
-                    Key* chunk_key = chunk_keys_->get(chunk_idx);
-                    cached_chunk_value_ = kv_->get(*chunk_key);  // returns the cloned value from KVStore
+            // if cache is empty or if the cached value's idx is not the same
+            // get the value from the kvstore and cache it
+            if (cached_chunk_value_ == nullptr || cached_chunk_idx_ != chunk_idx) {
+                if (cached_chunk_value_ != nullptr) {
+                    // delete the cached Value that is owned by this column
+                    commit_cache();
+                    delete cached_chunk_value_;
                 }
-                owned = false; // owned by the column
-                return cached_chunk_value_;
+                cached_chunk_idx_ = chunk_idx;
+                Key* chunk_key = chunk_keys_->get(chunk_idx);
+                cached_chunk_value_ = kv_->get(*chunk_key);  // returns the cloned value from KVStore
             }
+            owned = false; // owned by the column
+            return cached_chunk_value_;
         }
 
         /** Type converters: Return same column under its actual type, or
@@ -313,16 +300,31 @@ class Column : public Object {
         /** Type appropriate push_back methods. Calling the wrong method is
             * undefined behavior. **/
         virtual void push_back(int val) {
-            fail("Column.push_back(int): push_back bad value");
+            push_back(val, true);
         }
         virtual void push_back(bool val) {
-            fail("Column.push_back(bool): push_back bad value");
+            push_back(val, true);
         }
         virtual void push_back(double val) {
-            fail("Column.push_back(double): push_back bad value");
+            push_back(val, true);
         }
         virtual void push_back(String* val) {
-            fail("Column.push_back(String*): push_back bad value");
+            push_back(val, true);
+        }
+
+        /** Type appropriate push_back methods. Calling the wrong method is
+            * undefined behavior. **/
+        virtual void push_back(int val, bool commit) {
+            fail("Column.push_back(int, bool): push_back bad value");
+        }
+        virtual void push_back(bool val, bool commit) {
+            fail("Column.push_back(bool, bool): push_back bad value");
+        }
+        virtual void push_back(double val, bool commit) {
+            fail("Column.push_back(double, bool): push_back bad value");
+        }
+        virtual void push_back(String* val, bool commit) {
+            fail("Column.push_back(String*, bool): push_back bad value");
         }
 
         /** Returns the number of elements in the column. */
@@ -340,8 +342,23 @@ class Column : public Object {
             return 0;
         }
 
+        // get the next set of rows that are after the given end row index (inclusive) 
+        // will set start_row_idx to the first row in the set, and end_row_idx to the row
+        // after the the las row in the local set
+        bool get_next_local_rows(size_t &start_row_idx, size_t &end_row_idx) {
+            size_t chunk_idx = get_chunk_idx(end_row_idx);
+            for (size_t i = chunk_idx; i < chunk_keys_->size(); i++) {
+                if (chunk_keys_->get(i)->get_index() == kv_->node_index()) {
+                    start_row_idx = i * CHUNK_SIZE;
+                    end_row_idx = start_row_idx + CHUNK_SIZE;
+                    return true;
+                }
+            }
+            return false;
+        }
+
         size_t serial_buf_size() {
-            size_t ret = 1 + sizeof(size_t) + col_name_->size() + 1; // char for type and size_t for length and the name of column
+            size_t ret = 1 + sizeof(size_t) + key_buff_->base_size() + 1; // char for type and size_t for length and the name of column
             for (size_t i = 0; i < chunk_keys_->size(); i++) {
                 ret += chunk_keys_->get(i)->serial_buf_size();
             }
@@ -357,8 +374,8 @@ class Column : public Object {
             memcpy(buf_pointer, &len_, sizeof(size_t));
             buf_pointer += sizeof(size_t);
 
-            memcpy(buf_pointer, col_name_->c_str(), col_name_->size() + 1);
-            buf_pointer += col_name_->size() + 1;
+            memcpy(buf_pointer, key_buff_->get_base_c_str(), key_buff_->base_size() + 1);
+            buf_pointer += key_buff_->base_size() + 1;
             
             for (size_t i = 0; i < chunk_keys_->size(); i++) {
                 chunk_keys_->get(i)->serialize(buf_pointer);
@@ -406,7 +423,7 @@ class BoolColumn : public Column {
             return (idx % CHUNK_SIZE) / (sizeof(size_t) * 8);
         }
 
-        virtual void push_back(bool val) {
+        virtual void push_back(bool val, bool commit) {
             check_and_reallocate_(CHUNK_SIZE / 8);
             bool owned = false;
             size_t chunk_idx = get_chunk_idx(len_);
@@ -426,9 +443,10 @@ class BoolColumn : public Column {
             }
 
             memcpy(v + item_idx * sizeof(size_t), &buf, sizeof(size_t));
-            Value new_value(CHUNK_SIZE, v);
 
-            put_(chunk_idx, new_value);
+            if (commit) {
+                commit_cache();
+            }
 
             len_++;
             if (owned){
@@ -436,6 +454,10 @@ class BoolColumn : public Column {
             }
         }
         
+        virtual void push_back(bool val) {
+            push_back(val, true);
+        }
+
         // gets the bool at the index idx
         // if idx is out of bounds, exit
         bool get(size_t idx) {
@@ -502,8 +524,12 @@ class IntColumn : public Column {
             return dynamic_cast<IntColumn*>(this);
         }
 
+        virtual void push_back(int val, bool commit) {
+            Column::push_back_<int>(val, commit);
+        }
+
         virtual void push_back(int val) {
-            Column::push_back_<int>(val);
+            push_back(val, true);
         }
 
         char get_type_() {
@@ -547,8 +573,12 @@ class DoubleColumn : public Column {
             return dynamic_cast<DoubleColumn*>(this);
         }
 
+        virtual void push_back(double val, bool commit) {
+            Column::push_back_<double>(val, commit);
+        }
+
         virtual void push_back(double val) {
-            Column::push_back_<double>(val);
+            push_back(val, true);
         }
 
         char get_type_() {
@@ -612,8 +642,12 @@ class StringColumn : public Column {
             }
             return ret;
         }
-                
+
         virtual void push_back(String* val) {
+            push_back(val, true);
+        }
+                
+        virtual void push_back(String* val, bool commit) {
             abort_if_not(val != nullptr, "StringColumn.push_back(): val is nullptr");
             check_and_reallocate_(0);
             bool owned = false;
@@ -621,8 +655,8 @@ class StringColumn : public Column {
             size_t chunk_idx = get_chunk_idx(len_);
 
             Value* v = get_chunk_(chunk_idx, owned);
-            Value new_value(v->size() + val->size() + 1);
-            char* val_buf = new_value.get();
+            Value* new_value = new Value(v->size() + val->size() + 1);
+            char* val_buf = new_value->get();
 
             // copy in the old values
             memcpy(val_buf, v->get(), v->size());
@@ -630,7 +664,14 @@ class StringColumn : public Column {
             // copy in the new val that is added
             memcpy(val_buf + v->size(), val->c_str(), val->size() + 1);
 
-            put_(chunk_idx, new_value);
+            if (cached_chunk_value_ != nullptr) {
+                delete cached_chunk_value_;
+            }
+            cached_chunk_value_ = new_value;
+
+            if (commit) {
+                put_(chunk_idx, *new_value);
+            }
 
             if (owned) {
                 delete v;

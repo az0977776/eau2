@@ -28,11 +28,13 @@ class DataFrameAddFielder : public Fielder {
         Column** cols_;  // external
         size_t num_cols_;
         size_t idx_;
+        bool commit_;
 
-        DataFrameAddFielder(size_t num_cols, Column** cols) : Fielder() {
+        DataFrameAddFielder(size_t num_cols, Column** cols, bool commit) : Fielder() {
             cols_ = cols;
             num_cols_ = num_cols;
             idx_ = 0;
+            commit_ = commit;
         }
 
         ~DataFrameAddFielder() { }
@@ -47,25 +49,26 @@ class DataFrameAddFielder : public Fielder {
         /** Called for fields of the argument's type with the value of the field. */
         void accept(bool b) {
             abort_if_not(idx_ < num_cols_, "DataFrameAddFielder.accept(bool): Too many fields in row for DataFrame");
-            cols_[idx_]->push_back(b);
+            cols_[idx_]->push_back(b, commit_);
             idx_++;
         }
         
         void accept(double d) {
             abort_if_not(idx_ < num_cols_, "DataFrameAddFielder.accept(double): Too many fields in row for DataFrame");
-            cols_[idx_]->push_back(d);
+            cols_[idx_]->push_back(d, commit_);
             idx_++;
         }
 
         void accept(int i) {
             abort_if_not(idx_ < num_cols_, "DataFrameAddFielder.accept(int): Too many fields in row for DataFrame");
-            cols_[idx_]->push_back(i);
+            cols_[idx_]->push_back(i, commit_);
             idx_++;
         }
 
         void accept(String* s) {
+            printf("Adding a string\n");
             abort_if_not(idx_ < num_cols_, "DataFrameAddFielder.accept(String*): Too many fields in row for DataFrame");
-            cols_[idx_]->push_back(s);
+            cols_[idx_]->push_back(s, commit_);
             idx_++;
         }
         
@@ -226,6 +229,14 @@ class DataFrame : public Object {
             delete[] serialized_df; 
         }
 
+        void commit() {
+            // force columns to commit
+            for (size_t i = 0; i < ncols(); i++) {
+                cols_[i]->commit_cache();
+            }
+            add_self_to_kv_();
+        }
+
         Key* get_key() {
             return key_->clone();
         }
@@ -363,9 +374,11 @@ class DataFrame : public Object {
 
         /** Add a row at the end of this dataframe. The row is expected to have
          *  the right schema and be filled with values, otherwise undedined.  */
-        void add_row(Row& row, bool add_self) {
-            DataFrameAddFielder f(cols_len_, cols_); 
-            row.visit(schema_.length(), f); // add data to columns
+        void add_row(Row& row, bool add_self, bool commit) {
+            DataFrameAddFielder f(cols_len_, cols_, commit); 
+            printf("Visiting the row\n");
+            row.visit(nrows(), f); // add data to columns
+            printf("adding to the schema\n");
             if (cols_len_ > 0 && cols_[0]->size() > schema_.length()) {
                 schema_.add_row(); // nameless row
             }
@@ -377,7 +390,7 @@ class DataFrame : public Object {
         /** Add a row at the end of this dataframe. The row is expected to have
          *  the right schema and be filled with values, otherwise undedined.  */
         void add_row(Row& row) {
-            add_row(row, true);
+            add_row(row, true, true);
         }
 
 
@@ -391,19 +404,16 @@ class DataFrame : public Object {
             return cols_len_;
         }
 
+        // maps over rows start to end using rower. start is inclusive and end is exclusive [start, end)
         void map_rows_(size_t start, size_t end, Rower& r) {
             Row row(schema_);
             for (size_t i = start; i < end; i++) {
                 fill_row(i, row);
                 r.accept(row);  
-                // Who owns the strings in the fill_row Rower or dataframe? TODO
-                // find all strings and delete ...
-                // row.delete_strings();
-                // or - the rower must delete all strings that it gets
-                // TODO:
-                // should row box clone on set??
+                // fill row will copy strings into it so delete them
+                row.delete_strings();
             }
-            add_self_to_kv_();
+            // add_self_to_kv_();
         }
 
         /** Visit rows in order */
@@ -414,6 +424,14 @@ class DataFrame : public Object {
         void local_map(Rower& rower) {
             // maps over rows that are in this node ownly
             // calls rower.accept() row  -- ignores the return value
+            if (ncols() == 0 ) {
+                return;
+            }
+            size_t start = 0;
+            size_t end = 0;
+            while (cols_[0]->get_next_local_rows(start, end)) {
+                map_rows_(start, end, rower);
+            }
         }
 
         /** Print the dataframe in SoR format to standard output. */
@@ -506,10 +524,10 @@ class DataFrame : public Object {
 
             for (size_t i = 0; i < size; i++) {
                 r.set(0, vals[i]);
-                df->add_row(r, false);
+                df->add_row(r, false, false); // try not to send anything to kv store, operate on cached chunk
             }
             
-            df->add_self_to_kv_();
+            df->commit(); // commits the latest chunks and adds the dataframe to the kv store
             
             return df;
         }
@@ -557,10 +575,14 @@ class DataFrame : public Object {
             
             while (!writer.done()) {
                 writer.visit(row); // updates the row
-                df->add_row(row);
+                printf("about to add row without commit\n");
+                df->add_row(row, false, false);
+                printf("At end of while statement\n");
             }
 
-            df->add_self_to_kv_();
+            printf("before adding to kvstore\n");
+            df->commit();
+            printf("added to kvstore\n");
 
             return df;
         }

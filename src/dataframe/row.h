@@ -170,27 +170,41 @@ class StringBox: public Box {
         StringBox() : Box() {}
 
         ~StringBox() {
-            if (has_been_set_) {
-                delete val_;
-            }
-         }
+
+        }
 
         StringBox* as_string() {
             return dynamic_cast<StringBox*>(this);
         }
     
         void set(String* b) {
-            if (has_been_set_) {
-                delete val_;
-            }
             has_been_set_ = true;
-            val_ = b->clone();
+            val_ = b;
         }
         
         String* get() {
             abort_if_not(has_been_set_, "StringBox.get(): has not been set yet");
             return val_;
         }
+};
+
+// Fielder that deletes strings inside of a row
+class DeleteStringFielder : public Fielder {
+    public:
+        DeleteStringFielder() {}
+        virtual ~DeleteStringFielder() {}
+        /** Called before visiting a row, the argument is the row offset in the
+            dataframe. */
+        virtual void start(size_t r) { /* pass */ }
+        
+        /** Called for fields of the argument's type with the value of the field. */
+        virtual void accept(bool b) { /* pass */ }
+        virtual void accept(double d) { /* pass */ }
+        virtual void accept(int i) { /* pass */ }
+        virtual void accept(String* s) { delete s; }
+        
+        /** Called when all fields have been seen. */
+        virtual void done() { /* pass */ }
 };
  
 /*************************************************************************
@@ -240,6 +254,12 @@ class Row : public Object {
                 delete data_[i];
             }
             delete[] data_;
+        }
+
+        // Delete all strings that are in this row. 
+        void delete_strings() {
+            DeleteStringFielder f;
+            visit(get_idx(), f);
         }
         
         /** Setters: set the given column with the given value. Setting a column with

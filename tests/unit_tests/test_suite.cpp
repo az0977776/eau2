@@ -11,9 +11,12 @@
 #include "test_dataframe.h"
 
 int main(int argc, char **argv) {
-    run_sorer_tests();
-    run_map_tests();
+
 
     testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    int rv = RUN_ALL_TESTS();
+    
+    run_sorer_tests();
+    run_map_tests();
+    return rv;
 }

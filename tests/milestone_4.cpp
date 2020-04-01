@@ -6,6 +6,25 @@
 #include "../src/dataframe/row.h"
 #include "../src/dataframe/reader_writer.h"
 
+class Num : public Object {
+    public:
+        int val_;
+    
+        Num() : Num(0) { }
+        Num(int val) { val_ = val; }
+
+        void inc() { val_++; }
+        int get() { return val_; }
+
+        bool equal(Object* o) {
+            Num* n = dynamic_cast<Num*>(o);
+            if (n == nullptr) {
+                return false;
+            }
+            return n->val_ == val_;
+        }
+};
+
 class FileReader : public Writer {
     public:
         static const size_t BUFSIZE = 1024;
@@ -16,9 +35,9 @@ class FileReader : public Writer {
         FILE * file_;
 
         /** Creates the reader and opens the file for reading.  */
-        FileReader(const char* filename) {
+        FileReader(const char* filename) : Writer() {
             file_ = fopen(filename, "r");
-            if (file_ == nullptr) fail("Cannot open file %s", filename);
+            abort_if_not(file_ != nullptr, "Cannot open file %s", filename);
             buf_ = new char[BUFSIZE + 1]; //  null terminator
             fillBuffer_();
             skipWhitespace_();
@@ -50,7 +69,7 @@ class FileReader : public Writer {
         /** Returns true when there are no more words to read.  There is nothing
          more to read if we are at the end of the buffer and the file has
         all been read.     */
-        bool done() { return (i_ >= end_) && feof(file_);  }
+        bool done() override { return (i_ >= end_) && feof(file_);  }
     
         /** Reads more data from the file. */
         void fillBuffer_() {
@@ -87,9 +106,9 @@ class FileReader : public Writer {
 // convert a dataframe with schema('S') to a HashMap of String -> count
 class Adder : public Reader {
     public:
-        Map<String,size_t>& map_;  // String to Num map;  Num holds an int
+        Map<String,Num>& map_;  // String to Num map;  Num holds an int
         
-        Adder(Map<String, size_t>& map) : map_(map)  {}
+        Adder(Map<String, Num>& map) : Reader(), map_(map) {}
         
         bool visit(Row& r) override {
             // get the string from the dataframe
@@ -97,14 +116,12 @@ class Adder : public Reader {
             abort_if_not(word != nullptr, "Adder got a string that was nullptr");
 
             // increment the ocunt of the word in the map
-            size_t* count = map_.get(word);
+            Num* count = map_.get(word);
             if (count == nullptr) {
-                *count = 0; // if it does not exist, then the count of that word is 0
-                word = word->clone();
+                count = new Num(); // if it does not exist, then the count of that word is 0
+                map_.add(word->clone(), count);
             }
-            (*count)++; // increment
-            
-            map_.add(word, count);
+            count->inc(); // increment
             return false;
         }
 };
@@ -113,51 +130,29 @@ class Adder : public Reader {
 // convert a HashMap of String -> count to a Dataframe with schema('SI')
 class Summer : public Writer {
     public:
-        Map<String,size_t>& map_;
+        Map<String,Num>& map_;
         String** keys_;
-        size_t key_index = 0;
-        size_t seen = 0;
+        size_t index_ = 0;
 
-        Summer(Map<String,size_t>& map) : map_(map) {
+        Summer(Map<String,Num>& map) : Writer(), map_(map) {
             keys_ = map_.keys();
         }
 
-        void next() {
-            if (key_index == map_.size() ) return;
-            if ( j < map_.items_[i].keys_.size() ) {
-                j++;
-                ++seen;
-            } else {
-                ++i;
-                j = 0;
-                while( i < map_.capacity_ && map_.items_[i].keys_.size() == 0 )  i++;
-                if (k()) ++seen;
-            }
+        ~Summer() {
+            delete[] keys_;
         }
 
-        String* k() {
-            if (i==map_.capacity_ || j == map_.items_[i].keys_.size()) return nullptr;
-            return (String*) (map_.items_[i].keys_.get_(j));
-        }
+        void visit(Row& r) override {
+            abort_if_not(!done(), "Summer tried to visit a row after it was done");
+            String* key = keys_[index_];
+            Num* value = map_.get(key);
 
-        size_t v() {
-            if (i == map_.capacity_ || j == map_.items_[i].keys_.size()) {
-                assert(false); 
-                return 0;
-            }
-            return ((Num*)(map_.items_[i].vals_.get_(j)))->v;
-        }
-
-        void visit(Row& r) {
-            if (!k()) next();
-            String & key = *k();
-            size_t value = v();
             r.set(0, key);
-            r.set(1, (int) value);
-            next();
+            r.set(1, *((int *) value));
+            index_++;
         }
 
-        bool done() {return seen == map_.size(); }
+        bool done() override { return index_ == map_.size(); }
 };
  
 /****************************************************************************
@@ -171,15 +166,21 @@ class WordCount: public Application {
         static const size_t BUFSIZE = 1024;
         Key in;
         KeyBuff kbuf;
-        Map<String,size_t> all;
+        // Map<String,size_t> all;
+        const char* filename_;
 
-        WordCount() : Application(), in("data"), kbuf(new Key(0, "wc-map-")) { }
+        WordCount(const char* filename) : Application(), in("data"), kbuf(new Key(0, "wc-map-")) { 
+            filename_ = filename;
+        }
 
         /** The master nodes reads the input, then all of the nodes count. */
         void run_() override {
-            if (index == 0) {
-                FileReader fr;
-                delete DataFrame::fromVisitor(&in, &kv, "S", fr);
+            printf("starting to run, node: %zu\n", this_node());
+            if (this_node() == 0) {
+                FileReader fr(filename_);
+                DataFrame* df = DataFrame::fromVisitor(&in, &kv, "S", fr);
+                df->print();
+                delete df;
             }
             local_count();
             reduce();
@@ -196,36 +197,58 @@ class WordCount: public Application {
 
         /** Compute word counts on the local node and build a data frame. */
         void local_count() {
-            DataFrame* words = getAndWait(in);
+            printf("waiting for the filereader on node 0 to finish\n");
+            DataFrame* words = getAndWait(in); // Dataframe of schema "S" with every word
             p("Node ").p(this_node()).pln(": starting local count...");
-            Map<String,size_t> map;
+
+            // count up all words that are on this node (store in map)
+            Map<String,Num> map;
             Adder add(map);  // Adder is a Reader
-            words->local_map(add);  // local map takes a Reader
+            words->local_map(add);  // local map takes a Rower
+            // created hashmap of S->I
             delete words;
+
+            // convert map of S-> I to dataframe with schema "SI"
             Summer cnt(map);  // a writer
             delete DataFrame::fromVisitor(mk_key(this_node()), &kv, "SI", cnt);
+
+            map.delete_and_clear_items();
         }
 
         /** Merge the data frames of all nodes */
         void reduce() {
-            if (index != 0) 
+            if (this_node() != 0) 
                 return;
             pln("Node 0: reducing counts...");
-            Map<String, size_t> map;
+            Map<String, Num> map;
             Key* own = mk_key(0);
             merge(get(*own), map);
-            for (size_t i = 1; i < arg.num_nodes; ++i) { // merge other nodes
+            for (size_t i = 1; i < CLIENT_NUM; ++i) { // merge other nodes
                 Key* ok = mk_key(i);
                 merge(getAndWait(*ok), map);
                 delete ok;
             }
             p("Different words: ").pln(map.size());
             delete own;
+
+            map.delete_and_clear_items();
         }
 
-        void merge(DataFrame* df, Map<String,size_t>& m) {
+        void merge(DataFrame* df, Map<String,Num>& m) {
             Adder add(m);
             df->map(add);
             delete df;
         }
 }; // WordcountDemo
+
+
+int main() {
+    WordCount wc("data/word_count.txt");
+
+    wc.run_();
+
+    // this is to keep the program running
+    sleep(20);
+
+    return 0;
+}

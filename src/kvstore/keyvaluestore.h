@@ -110,6 +110,14 @@ class KVStore : public Object {
             return node_index_;
         }
 
+        size_t num_nodes() {
+            if (server_) {
+                return CLIENT_NUM;
+            } else {
+                return 1;
+            }
+        }
+
         // returns the sockaddr_in associated with the client if it exists, else return an empty sockaddr_in
         sockaddr_in get_sender() {
             if (server_) {

@@ -121,7 +121,7 @@ class Map : public Object {
         void add(K* key, V* value) {
             // if the key does not exist in the bucket, add key and value to their array
             size_t h = key->hash() % num_buckets_;
-            Object* o = buckets_[h]->get_val(key);
+            V* o = buckets_[h]->get_val(key);
             if (o == nullptr) {
                 // key does not exist yet
                 check_rehash_();
@@ -210,5 +210,19 @@ class Map : public Object {
                 buckets_ = new_buckets;
                 num_buckets_ = new_num_buckets;
             }
+    }
+
+    // this will call delete on each key and value in the map. 
+    // The map will be empty after completion (i.e. size() == 0)
+    void delete_and_clear_items() {
+        K** k = keys();
+
+        size_t num = size();
+        for (size_t i = 0; i < num; i++) {
+            delete pop_item(k[i]);
+            delete k[i];
+        }
+
+        delete[] k;
     }
 };

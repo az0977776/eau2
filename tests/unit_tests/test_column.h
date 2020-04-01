@@ -413,7 +413,7 @@ void test_bool_column_serialize() {
     BoolColumn* bc2 = Column::deserialize(serialized_col, &kvs)->as_bool();
 
     EXPECT_EQ(bc2->size(), bc->size());
-    EXPECT_TRUE(s.equals(bc2->col_name_));
+    EXPECT_TRUE(s.equals(bc2->key_buff_->get_base_str()));
     EXPECT_EQ(bc2->get(100), bc->get(100));
     EXPECT_EQ(bc2->get(101), bc->get(101));
     EXPECT_EQ(bc2->get(4999), bc->get(4999));
@@ -451,7 +451,7 @@ void test_bool_column_serial_buf_size() {
     BoolColumn* bc2 = Column::deserialize(buf, &kvs)->as_bool();
 
     EXPECT_EQ(bc2->size(), bc.size());
-    EXPECT_TRUE(s.equals(bc2->col_name_));
+    EXPECT_TRUE(s.equals(bc2->key_buff_->get_base_str()));
     EXPECT_EQ(bc2->get(100), bc.get(100));
     EXPECT_EQ(bc2->get(101), bc.get(101));
     EXPECT_EQ(bc2->get(4999), bc.get(4999));
@@ -483,7 +483,7 @@ void test_int_column_serialize() {
     IntColumn* bc2 = Column::deserialize(serialized_col, &kvs)->as_int();
 
     EXPECT_EQ(bc2->size(), bc->size());
-    EXPECT_TRUE(s.equals(bc2->col_name_));
+    EXPECT_TRUE(s.equals(bc2->key_buff_->get_base_str()));
     EXPECT_EQ(bc2->get(4999), bc->get(4999));
     EXPECT_EQ(bc2->get(3000), bc->get(3000));
 
@@ -520,7 +520,7 @@ void test_int_column_serial_buf_size() {
     IntColumn* ic2 = Column::deserialize(buf, &kvs)->as_int();
 
     EXPECT_EQ(ic2->size(), ic.size());
-    EXPECT_TRUE(s.equals(ic2->col_name_));
+    EXPECT_TRUE(s.equals(ic2->key_buff_->get_base_str()));
     EXPECT_EQ(ic2->get(4999), ic.get(4999));
     EXPECT_EQ(ic2->get(3000), ic.get(3000));
 
@@ -551,7 +551,7 @@ void test_double_column_serialize() {
     DoubleColumn* bc2 = Column::deserialize(serialized_col, &kvs)->as_double();
 
     EXPECT_EQ(bc2->size(), bc->size());
-    EXPECT_TRUE(s.equals(bc2->col_name_));
+    EXPECT_TRUE(s.equals(bc2->key_buff_->get_base_str()));
     EXPECT_EQ(bc2->get(4999), bc->get(4999));
     EXPECT_EQ(bc2->get(3000), bc->get(3000));
 
@@ -588,7 +588,7 @@ void test_double_column_serial_buf_size() {
     DoubleColumn* dc2 = Column::deserialize(buf, &kvs)->as_double();
 
     EXPECT_EQ(dc2->size(), dc.size());
-    EXPECT_TRUE(s.equals(dc2->col_name_));
+    EXPECT_TRUE(s.equals(dc2->key_buff_->get_base_str()));
     EXPECT_EQ(dc2->get(4999), dc.get(4999));
     EXPECT_EQ(dc2->get(3000), dc.get(3000));
 
@@ -626,7 +626,7 @@ void test_string_column_serialize() {
     StringColumn* bc2 = Column::deserialize(serialized_col, &kvs)->as_string();
 
     EXPECT_EQ(bc2->size(), bc->size());
-    EXPECT_TRUE(s.equals(bc2->col_name_));
+    EXPECT_TRUE(s.equals(bc2->key_buff_->get_base_str()));
     EXPECT_TRUE(bc2->get(4999)->equals(bc->get(4999)));
     EXPECT_TRUE(bc2->get(3000)->equals(bc->get(3000)));
 
@@ -669,7 +669,7 @@ void test_string_column_serial_buf_size() {
     StringColumn* sc2 = Column::deserialize(buf, &kvs)->as_string();
 
     EXPECT_EQ(sc2->size(), sc.size());
-    EXPECT_TRUE(s.equals(sc2->col_name_));
+    EXPECT_TRUE(s.equals(sc2->key_buff_->get_base_str()));
     EXPECT_TRUE(sc2->get(4999)->equals(sc.get(4999)));
     EXPECT_TRUE(sc2->get(3000)->equals(sc.get(3000)));
 

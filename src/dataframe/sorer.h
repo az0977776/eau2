@@ -169,7 +169,6 @@ class SOR : public Object {
         // read the rows from the starting byte up to len bytes into Columns.
         void parse_(DataFrame* df, size_t from, size_t len) {
             seek_(from);
-            String empty_string("");
             char buf[BUFF_LEN];
             Schema schema = df->get_schema();
             Row df_row(schema);
@@ -217,7 +216,7 @@ class SOR : public Object {
                                 df_row.set(i, 0.0);
                                 break;
                             case STRING:
-                                df_row.set(i, &empty_string);
+                                df_row.set(i, new String(""));
                                 break;
                             default:
                                 fail("SOR.parse(): empty value into unknown col type");    
@@ -243,7 +242,6 @@ class SOR : public Object {
                             {
                                 String* tmp = as_string(row[i]);
                                 df_row.set(i, tmp);
-                                delete tmp;
                                 break;
                             }
                             default:
@@ -254,8 +252,10 @@ class SOR : public Object {
                     }
                 }
 
-                df->add_row(df_row);
+                df->add_row(df_row, false, false); // try not to add anything to the kvstore
+                df_row.delete_strings();
                 delete[] row;
             }
+            df->commit(); // adds the latest chunks to the kvstore and adds the dataframe to the kvstore
         }
 };

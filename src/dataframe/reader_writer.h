@@ -1,4 +1,6 @@
-#include "object.h"
+#pragma once
+
+#include "../util/object.h"
 #include "row.h"
 
 
@@ -6,12 +8,16 @@ class Writer : public Object {
     public:
         /** Reads next word and stores it in the row. Actually read the word.
          While reading the word, we may have to re-fill the buffer  */
-        virtual void visit(Row & r) = 0;
+        virtual void visit(Row & r) {
+            /* pass */
+        }
 
         /** Returns true when there are no more words to read.  There is nothing
          more to read if we are at the end of the buffer and the file has
         all been read.     */
-        virtual bool done() = 0;
+        virtual bool done() {
+            return true;
+        }
 };
 
 // just to satisify the milestone 4 code naming

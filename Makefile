@@ -31,6 +31,12 @@ milestone3: server
 	./milestone3 &
 	./milestone3
 
+milestone4: server
+	g++ -pthread -O3 -Wall -pedantic -std=c++11 tests/milestone_4.cpp -o milestone4
+	./milestone4 &
+	./milestone4 &
+	./milestone4
+
 clean:
 	-rm -rf tests/CMakeCache.txt
 	-rm tests/unit_tests/test_suite
@@ -38,6 +44,7 @@ clean:
 	-rm server
 	-rm client
 	-rm milestone3
+	-rm milestone4
 	-rm kvstore
 
-.PHONY: server client kvstore milestone2 milestone3 
+.PHONY: server client kvstore milestone2 milestone3 milestone4

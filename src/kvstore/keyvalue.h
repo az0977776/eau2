@@ -182,8 +182,17 @@ class KeyBuff : public Object {
             delete k;
         } 
 
+        KeyBuff(String* k) {
+            base_ = k->clone();
+            node_index_ = 0;
+        }
+
         ~KeyBuff() {
             delete base_;
+        }
+
+        void set_node_index(size_t node_index) {
+            node_index_ = node_index;
         }
 
         Key* get(const char* suffix) {
@@ -191,7 +200,7 @@ class KeyBuff : public Object {
             memcpy(buf, base_->c_str(), base_->size());
             memcpy(buf + base_->size(), suffix, strlen(suffix) + 1);
             Key* ret = new Key(node_index_, buf);
-            delete buf;
+            delete[] buf;
             return ret;
         }
 
@@ -201,4 +210,17 @@ class KeyBuff : public Object {
             sprintf(buf, ":0x%X", (unsigned int)num);
             return get(buf);
         }
-}
+
+        size_t base_size() {
+            return base_->size();
+        }
+
+        char* get_base_c_str() {
+            return base_->c_str();
+        }
+
+        String* get_base_str() {
+            return base_;
+        }
+};
+

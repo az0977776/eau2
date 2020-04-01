@@ -19,5 +19,5 @@ static const char* CLIENT_IP = "127.0.0.1";     // ip address of each client
 
 // network.h
 static const int SERVER_LISTEN_PORT = 8080;     // port that the server listens on
-static const int CLIENT_NUM = 5;                // maximum number of clients
+static const int CLIENT_NUM = 3;                // maximum number of clients
 static const int MAX_PACKET_LENGTH = 1024;      // The maximum number of bytes in a package
