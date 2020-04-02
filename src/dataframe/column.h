@@ -440,12 +440,13 @@ class BoolColumn : public Column {
             char* v = value->get();
 
             size_t buf;
+            size_t one = 1;
             memcpy(&buf, v + item_idx * sizeof(size_t), sizeof(size_t));
 
             if (val) {
-                buf |= (1 << bit_idx);
+                buf |= (one << bit_idx);
             } else {
-                buf &= (~(1 << bit_idx));
+                buf &= (~(one << bit_idx));
             }
 
             memcpy(v + item_idx * sizeof(size_t), &buf, sizeof(size_t));
@@ -476,9 +477,11 @@ class BoolColumn : public Column {
             Value* value = get_chunk_(chunk_idx, owned);
             char* v = value->get();
             size_t buf;
+            size_t one = 1;
             memcpy(&buf, v + item_idx * sizeof(size_t), sizeof(size_t));
 
-            bool ret = (buf >> bit_idx) & 1;
+            bool ret = (buf >> bit_idx) & one;
+
             if (owned) {
                 delete value;
             }

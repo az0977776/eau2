@@ -295,6 +295,7 @@ void test_bool_column() {
     ASSERT_EQ(ic->size(), 5000);
     EXPECT_TRUE(ic->get(4999));
     EXPECT_TRUE(ic->get(1));
+    EXPECT_FALSE(ic->get(32));
     EXPECT_FALSE(ic->get(1024));
     EXPECT_FALSE(ic->get(64));
     EXPECT_FALSE(ic->get(1088));
