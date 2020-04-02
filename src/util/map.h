@@ -215,14 +215,17 @@ class Map : public Object {
     // this will call delete on each key and value in the map. 
     // The map will be empty after completion (i.e. size() == 0)
     void delete_and_clear_items() {
+        if (size() == 0) { return; }
         K** k = keys();
 
         size_t num = size();
         for (size_t i = 0; i < num; i++) {
             delete pop_item(k[i]);
             delete k[i];
+            size_--;
         }
 
+        abort_if_not(size() == 0, "Tried to clear the map, but size is not 0");
         delete[] k;
     }
 };

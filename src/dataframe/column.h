@@ -200,7 +200,9 @@ class Column : public Object {
 
         // puts the cached value into the kv store
         void commit_cache() {
-            put_(cached_chunk_idx_, *cached_chunk_value_);
+            if (cached_chunk_value_ != nullptr){  
+                put_(cached_chunk_idx_, *cached_chunk_value_);
+            }
         }
 
         template <class T>
@@ -346,11 +348,15 @@ class Column : public Object {
         // will set start_row_idx to the first row in the set, and end_row_idx to the row
         // after the the las row in the local set
         bool get_next_local_rows(size_t &start_row_idx, size_t &end_row_idx) {
+            if (end_row_idx >= size()) {
+                return false;
+            }
             size_t chunk_idx = get_chunk_idx(end_row_idx);
             for (size_t i = chunk_idx; i < chunk_keys_->size(); i++) {
                 if (chunk_keys_->get(i)->get_index() == kv_->node_index()) {
                     start_row_idx = i * CHUNK_SIZE;
                     end_row_idx = start_row_idx + CHUNK_SIZE;
+                    end_row_idx = end_row_idx < size() ? end_row_idx : size();
                     return true;
                 }
             }
@@ -612,9 +618,9 @@ class StringColumn : public Column {
 
         ~StringColumn() {
             // delete all strings
-            for (size_t i = 0; i < size(); i++) {
-                delete get(i);  // todo?
-            }
+            // for (size_t i = 0; i < size(); i++) {
+            //     delete get(i);  // todo?
+            // }
         }
 
         StringColumn* as_string() {
@@ -702,9 +708,11 @@ Column* Column::deserialize(const char* buf, KVStore* kvs) {
 
     Array<Key>* keys = new Array<Key>();
 
-    for (size_t i = 0; i < (len / CHUNK_SIZE) + 1; i++) {
-        keys->push_back(Key::deserialize(buf_pointer));
-        buf_pointer += keys->get(i)->serial_buf_size();
+    if (len != 0) {
+        for (size_t i = 0; i < (len / CHUNK_SIZE) + 1; i++) {
+            keys->push_back(Key::deserialize(buf_pointer));
+            buf_pointer += keys->get(i)->serial_buf_size();
+        }
     }
 
     Column* ret = nullptr;

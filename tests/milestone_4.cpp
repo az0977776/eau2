@@ -13,7 +13,8 @@ class Num : public Object {
         Num() : Num(0) { }
         Num(int val) { val_ = val; }
 
-        void inc() { val_++; }
+        void inc() { inc(1); }
+        void inc(int i) { val_+= i; }
         int get() { return val_; }
 
         bool equal(Object* o) {
@@ -43,6 +44,11 @@ class FileReader : public Writer {
             skipWhitespace_();
         }
 
+        void cleanup_row(Row &r) {
+            // this writer cleans up whatever it put in the row.
+            r.delete_strings();
+        }
+
         /** Reads next word and stores it in the row. Actually read the word.
          While reading the word, we may have to re-fill the buffer  */
         void visit(Row & r) override {
@@ -60,8 +66,9 @@ class FileReader : public Writer {
                 ++i_;
             }
             buf_[i_] = 0;
-            String word(buf_ + wStart, i_ - wStart);
-            r.set(0, &word);
+            // Who deletes this after the row is added to
+            String* word = new String(buf_ + wStart, i_ - wStart);
+            r.set(0, word);
             ++i_;
             skipWhitespace_();
         }
@@ -126,6 +133,32 @@ class Adder : public Reader {
         }
 };
  
+ 
+/****************************************************************************/
+// convert a dataframe with schema('SI') to a HashMap of String -> count
+class Merger : public Reader {
+    public:
+        Map<String,Num>& map_;  // String to Num map;  Num holds an int
+        
+        Merger(Map<String, Num>& map) : Reader(), map_(map) {}
+        
+        bool visit(Row& r) override {
+            // get the string from the dataframe
+            String* word = r.get_string(0);  // Who owns this Adder or dataframe? TODO
+            int num = r.get_int(1);
+            abort_if_not(word != nullptr, "Merger got a string that was nullptr");
+
+            // increment the ocunt of the word in the map
+            Num* count = map_.get(word);
+            if (count == nullptr) {
+                count = new Num(); // if it does not exist, then the count of that word is 0
+                map_.add(word->clone(), count);
+            }
+            count->inc(num);
+            return false;
+        }
+};
+ 
 /***************************************************************************/
 // convert a HashMap of String -> count to a Dataframe with schema('SI')
 class Summer : public Writer {
@@ -148,7 +181,7 @@ class Summer : public Writer {
             Num* value = map_.get(key);
 
             r.set(0, key);
-            r.set(1, *((int *) value));
+            r.set(1, value->get());
             index_++;
         }
 
@@ -175,29 +208,38 @@ class WordCount: public Application {
 
         /** The master nodes reads the input, then all of the nodes count. */
         void run_() override {
-            printf("starting to run, node: %zu\n", this_node());
+            print("starting to run\n");
             if (this_node() == 0) {
                 FileReader fr(filename_);
                 DataFrame* df = DataFrame::fromVisitor(&in, &kv, "S", fr);
-                df->print();
+                // df->print();
                 delete df;
             }
             local_count();
             reduce();
+            print("DONE\n");
         }
 
         /** Returns a key for given node.  These keys are homed on master node
          *  which then joins them one by one. */
         Key* mk_key(size_t idx) {
             Key * k = kbuf.get(idx);
-            printf("Created key: ");
-            k->print();
             return k;
+        }
+
+        void print_map(Map<String, Num> &map) {
+            String** str = map.keys();
+            Num** nums = map.values();
+            for (size_t i = 0; i < map.size(); i++) {
+                printf("Word \"%s\" has count %d\n", str[i]->c_str(), nums[i]->get());
+            }
+
+            delete[] str;
+            delete[] nums;
         }
 
         /** Compute word counts on the local node and build a data frame. */
         void local_count() {
-            printf("waiting for the filereader on node 0 to finish\n");
             DataFrame* words = getAndWait(in); // Dataframe of schema "S" with every word
             p("Node ").p(this_node()).pln(": starting local count...");
 
@@ -205,12 +247,16 @@ class WordCount: public Application {
             Map<String,Num> map;
             Adder add(map);  // Adder is a Reader
             words->local_map(add);  // local map takes a Rower
+
             // created hashmap of S->I
             delete words;
 
             // convert map of S-> I to dataframe with schema "SI"
             Summer cnt(map);  // a writer
-            delete DataFrame::fromVisitor(mk_key(this_node()), &kv, "SI", cnt);
+            Key* si_key = mk_key(this_node());  // TODO: do we have to delete this
+            DataFrame* df2 = DataFrame::fromVisitor(si_key, &kv, "SI", cnt);
+            delete df2;
+            delete si_key;
 
             map.delete_and_clear_items();
         }
@@ -222,33 +268,43 @@ class WordCount: public Application {
             pln("Node 0: reducing counts...");
             Map<String, Num> map;
             Key* own = mk_key(0);
-            merge(get(*own), map);
+            DataFrame* df = get(*own);
+
+            merge(df, map);
+
             for (size_t i = 1; i < CLIENT_NUM; ++i) { // merge other nodes
                 Key* ok = mk_key(i);
-                merge(getAndWait(*ok), map);
+                df = getAndWait(*ok);
+                merge(df, map);
                 delete ok;
             }
             p("Different words: ").pln(map.size());
+            print_map(map);
             delete own;
 
             map.delete_and_clear_items();
         }
 
         void merge(DataFrame* df, Map<String,Num>& m) {
-            Adder add(m);
-            df->map(add);
+            Merger merger(m);
+            df->map(merger);
             delete df;
         }
 }; // WordcountDemo
 
 
-int main() {
-    WordCount wc("data/word_count.txt");
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        printf("Usage: ./milestone4 <filename>\n");
+        exit(1);
+    }
+    WordCount wc(argv[1]);
 
     wc.run_();
 
     // this is to keep the program running
-    sleep(20);
+    // server should last for 20 seconds and should send a teardown to shut down the clients
+    sleep(30);
 
     return 0;
 }

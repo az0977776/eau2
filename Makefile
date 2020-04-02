@@ -33,9 +33,15 @@ milestone3: server
 
 milestone4: server
 	g++ -pthread -O3 -Wall -pedantic -std=c++11 tests/milestone_4.cpp -o milestone4
-	./milestone4 &
-	./milestone4 &
-	./milestone4
+	./milestone4 data/word_count.txt &
+	./milestone4 data/word_count.txt &
+	./milestone4 data/word_count.txt 
+
+word_count: server
+	g++ -pthread -O3 -Wall -pedantic -std=c++11 tests/milestone_4.cpp -o milestone4
+	./milestone4 $(filename)&
+	./milestone4 $(filename)&
+	./milestone4 $(filename)
 
 clean:
 	-rm -rf tests/CMakeCache.txt
@@ -47,4 +53,4 @@ clean:
 	-rm milestone4
 	-rm kvstore
 
-.PHONY: server client kvstore milestone2 milestone3 milestone4
+.PHONY: server client kvstore milestone2 milestone3 milestone4 word_count

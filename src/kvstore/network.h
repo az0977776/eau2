@@ -334,7 +334,6 @@ class Network : public Object {
                     connection_thread->detach();
                 }
                 else if (quitting_) {
-                    printf("Listening server is quitting\n");
                     break;
                 }
             }
@@ -501,6 +500,7 @@ class Server : public Network {
             sockaddr_in s = get_sockaddr();
             printf("Server is now accepting client connections on port: %d...\n", s.sin_port);
             Network::accept_connections(server_fd_);
+            printf("[SERVER] Listening thread is quitting\n");
         }
 
         // send a new directory to each client registered with this server

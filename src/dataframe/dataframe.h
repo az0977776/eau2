@@ -66,7 +66,6 @@ class DataFrameAddFielder : public Fielder {
         }
 
         void accept(String* s) {
-            printf("Adding a string\n");
             abort_if_not(idx_ < num_cols_, "DataFrameAddFielder.accept(String*): Too many fields in row for DataFrame");
             cols_[idx_]->push_back(s, commit_);
             idx_++;
@@ -194,9 +193,7 @@ class DataFrame : public Object {
 
         /** Create a data frame from a schema and columns. All columns are created
         * empty. */
-        DataFrame(Schema& schema, Key& key, KVStore* kv) : DataFrame(schema, key, kv, true) {
-
-        }
+        DataFrame(Schema& schema, Key& key, KVStore* kv) : DataFrame(schema, key, kv, true) { }
 
         DataFrame(Schema& schema, Key& key, KVStore* kv, bool add_self) : schema_(schema) {
             cols_cap_ = schema_.width() < 4 ? 4: schema_.width();
@@ -376,9 +373,7 @@ class DataFrame : public Object {
          *  the right schema and be filled with values, otherwise undedined.  */
         void add_row(Row& row, bool add_self, bool commit) {
             DataFrameAddFielder f(cols_len_, cols_, commit); 
-            printf("Visiting the row\n");
             row.visit(nrows(), f); // add data to columns
-            printf("adding to the schema\n");
             if (cols_len_ > 0 && cols_[0]->size() > schema_.length()) {
                 schema_.add_row(); // nameless row
             }
@@ -575,15 +570,11 @@ class DataFrame : public Object {
             
             while (!writer.done()) {
                 writer.visit(row); // updates the row
-                printf("about to add row without commit\n");
                 df->add_row(row, false, false);
-                printf("At end of while statement\n");
+                writer.clean_up_row(row);
             }
-
-            printf("before adding to kvstore\n");
+            
             df->commit();
-            printf("added to kvstore\n");
-
             return df;
         }
 

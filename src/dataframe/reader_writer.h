@@ -18,6 +18,10 @@ class Writer : public Object {
         virtual bool done() {
             return true;
         }
+
+        virtual void clean_up_row(Row &row) {
+            /* pass */
+        }
 };
 
 // just to satisify the milestone 4 code naming

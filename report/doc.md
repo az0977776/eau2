@@ -231,3 +231,6 @@ What needs to be done:
 // the cached chunk is for both gets and puts, currently it does not update
 // if the remote chunk is updated (no cache invalidation) and will always 
 // overwrite whatever is in the kvstore when this chunk is commited
+
+
+// how we distribut ethe chunks

@@ -53,4 +53,14 @@ class Application : public Object{
         virtual size_t this_node() {
             return node_idx_;
         }
+
+        // this is a print function that will print out the node index of this application
+        // used for debugging
+        void print(const char* fmt, ...) {
+            printf("NODE %zu: ", this_node());
+            va_list ap;
+            va_start(ap, fmt);
+            vprintf(fmt, ap);
+            va_end(ap);
+        }
 };

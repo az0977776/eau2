@@ -76,17 +76,8 @@ class KVStore : public Object {
 
         ~KVStore() {
             lock_map();
-            Key** keys = map_.keys();
-            Value** vals = map_.values();
-            size_t size = map_.size();
-
-            for (size_t i = 0; i < size; i++) {
-                delete keys[i];
-                delete vals[i];
-            }
-
-            delete[] keys;
-            delete[] vals;
+            // delete all keys and values in the map  -- map_.size() should be 0
+            map_.delete_and_clear_items();
 
             if (server_) {  
                 delete client_->get_message_handler();
