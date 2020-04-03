@@ -6,14 +6,12 @@ The eua2 system is a system that allows users to run applications involving data
 # Architecture
 
 ## Network and Key-Value Store Layer
-
 This layer is a distributed KV store running on multiple node. Each KV store node has part of the data, and the KV store nodes talk to exchange data when needed. All of the networking and concurrency control is hidden here.
 
 ### Server and Client startup/setup
 To setup the system, the registration server must first be started. Clients (KV Store nodes) will start after and connect to the server. The server keeps track of all registered clients and broadcasts all registered clients to each of the registered clients. This allows the clients to discover all other clients in the system.
 
 ## Distributed DataFrame and Array Layer
-
 This layer provides abstractions like the distributed dataframe and arrays. 
 
 ### Distributed DataFrame and Column
@@ -22,7 +20,6 @@ A DataFrame represents multiple columns of data that each hold a specific type (
 A dataframe can hold multiple columns and each column holds keys to its chunks that are stored within the key-value store. When accessing a value inside a dataframe, the dataframe finds the correct column and finds the correct chunk inside that column. Then, the dataframe looks for the chunk in the key-value store by using the key for the chunk and gets the value it wants from that chunk.
 
 ## Application Layer
-
 The user can operate on the dataframes. (Queries, Machine Learning, AI)
 
 
@@ -117,15 +114,39 @@ A `Column` is a single column of a `DataFrame` Object. A `Column` can hold value
 - `double`
 - `int`
 - `bool`
-A `Column` object holds `Key` objects that are associated with `Value` objects representing `Chunks` that hold the data in the column.
+
+A `Column` object holds `Key` objects that are associated with `Value` objects representing `Chunks` that hold the data in the column. 
 A `Column` is serialized with the format `<column type><column length><column name(null terminated)>[<key>...]`.
+
+#### Distribution Strategy
+Each Column knows the number of nodes with key-value stores that are available. Columns distribute their chunks to the nodes with equal distribution by sending chunks to the node with index equal to the chunk index modded by the total number of nodes. ie) If there are three nodes, then starting with the 0th chunk, every third chunk goes to the first node. This strategy also ensures that the Nth chunk of every column in a dataframe is distributed to the same node. This makes local mapping easier.
+
+#### Caching 
+Each column caches a single chunk for both puts and gets to the key value store. The cache can be commited into the key value store when pushing elements onto the column. The cache is automatically commited into the key value store when the column gets from or puts into a different chunk index. The cache is effective when fetching elements or putting elements into the same chunk index. The cache is not effective if the user is randomly accessing the column. 
+
+The column has a boolean flag to indicate if the cached chunk has been mutated. This flag is set during pushing elements onto the column. If the flag is not set, then the chunk is not committed when being swapped out.
 
 ### DataFrame
 The `DataFrame` class holds `Key` objects that are associated with `Value` objects representing `Column` objects that hold data. 
 A `DataFrame` is serialized with the format `<dataframe key><num column>[<column>...]`.
 
 ## Application
-The `Application` class handles interactions with `DataFrame` objects using the `KeyValueStore`. The application is allowed to create `DataFrame` objects, store `DataFrame` objects in the `KeyValueStore` and retreive `DataFrame` objects from the `KeyValueStore`.
+The `Application` class handles interactions with `DataFrame` objects using the `KeyValueStore`. The application is allowed to create `DataFrame` objects, store `DataFrame` objects in the `KeyValueStore` and retreive `DataFrame` objects from the `KeyValueStore`. 
+
+Putting a key and DataFrame:
+```cpp
+void put(Key* k, DataFrame* v)
+```
+
+Getting a DataFrame, returns `nullptr` if `Key` does not exist.
+```cpp
+DataFrame* get(Key* k)
+```
+
+Getting a DataFrame, blocks/waits until `Key` exists if it does not exist.
+```cpp
+DataFrame* getAndWait(Key* k)
+```
 
 
 # Use cases
@@ -215,22 +236,8 @@ What the team has:
 - Create a Key/Value Store class
 - Create an application class
 - Create a Distributed DataFrame that can be stored across multiple nodes
+- Distribute the column chunks evenly across all nodes on the network
 
 What needs to be done:
-- Distribute the column chunks evenly across all nodes on the network
 - speed check (ensure every get is "fast")
 - improve on caching
-
-
-
-
-
-
-
-
-// the cached chunk is for both gets and puts, currently it does not update
-// if the remote chunk is updated (no cache invalidation) and will always 
-// overwrite whatever is in the kvstore when this chunk is commited
-
-
-// how we distribut ethe chunks

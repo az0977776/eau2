@@ -212,7 +212,6 @@ class WordCount: public Application {
             if (this_node() == 0) {
                 FileReader fr(filename_);
                 DataFrame* df = DataFrame::fromVisitor(&in, &kv, "S", fr);
-                // df->print();
                 delete df;
             }
             local_count();
@@ -241,19 +240,18 @@ class WordCount: public Application {
         /** Compute word counts on the local node and build a data frame. */
         void local_count() {
             DataFrame* words = getAndWait(in); // Dataframe of schema "S" with every word
-            p("Node ").p(this_node()).pln(": starting local count...");
+            print("starting local count...");
 
             // count up all words that are on this node (store in map)
+            // create hashmap of S->I
             Map<String,Num> map;
             Adder add(map);  // Adder is a Reader
             words->local_map(add);  // local map takes a Rower
-
-            // created hashmap of S->I
             delete words;
 
             // convert map of S-> I to dataframe with schema "SI"
             Summer cnt(map);  // a writer
-            Key* si_key = mk_key(this_node());  // TODO: do we have to delete this
+            Key* si_key = mk_key(this_node());
             DataFrame* df2 = DataFrame::fromVisitor(si_key, &kv, "SI", cnt);
             delete df2;
             delete si_key;
@@ -265,7 +263,7 @@ class WordCount: public Application {
         void reduce() {
             if (this_node() != 0) 
                 return;
-            pln("Node 0: reducing counts...");
+            print("reducing counts...");
             Map<String, Num> map;
             Key* own = mk_key(0);
             DataFrame* df = get(*own);

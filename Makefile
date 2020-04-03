@@ -1,5 +1,7 @@
 all: clean build test
 
+test_all: test valgrind milestone2 
+
 build:
 	docker build -t cs4500:0.1 .
 	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test/tests/unit_tests && cmake . && make"

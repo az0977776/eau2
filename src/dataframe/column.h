@@ -137,6 +137,8 @@ class Column : public Object {
 
         size_t cached_chunk_idx_;
         Value* cached_chunk_value_;  // owned
+        bool dirty_cache_; // this value is set to true when the cached chunk is mutated,
+        // if this value is false when the cached chunk is changed, do not need to commit the chunk
 
         size_t len_;
 
@@ -146,6 +148,7 @@ class Column : public Object {
             kv_ = kv;
             key_buff_ = new KeyBuff(col_name);
 
+            dirty_cache_ = false;
             cached_chunk_idx_ = 0;
             cached_chunk_value_ = nullptr; // owned by the column
             // the cached chunk is for both gets and puts, currently it does not update
@@ -200,6 +203,9 @@ class Column : public Object {
 
         // puts the cached value into the kv store
         void commit_cache() {
+            if (!dirty_cache_) {
+                return;
+            }
             if (cached_chunk_value_ != nullptr){  
                 put_(cached_chunk_idx_, *cached_chunk_value_);
             }
@@ -217,6 +223,7 @@ class Column : public Object {
             Value* value = get_chunk_(chunk_idx, owned);
             char* v = value->get();
             memcpy(v + item_idx * sizeof(T), &val, sizeof(T));
+            dirty_cache_ = true;
 
             // if commit is true put the cached value into the KVStore
             if (commit){
@@ -272,6 +279,7 @@ class Column : public Object {
                 cached_chunk_idx_ = chunk_idx;
                 Key* chunk_key = chunk_keys_->get(chunk_idx);
                 cached_chunk_value_ = kv_->get(*chunk_key);  // returns the cloned value from KVStore
+                dirty_cache_ = false;
             }
             owned = false; // owned by the column
             return cached_chunk_value_;
@@ -450,6 +458,7 @@ class BoolColumn : public Column {
             }
 
             memcpy(v + item_idx * sizeof(size_t), &buf, sizeof(size_t));
+            dirty_cache_ = true;
 
             if (commit) {
                 commit_cache();
@@ -673,10 +682,12 @@ class StringColumn : public Column {
             // copy in the new val that is added
             memcpy(val_buf + v->size(), val->c_str(), val->size() + 1);
 
+            // string update the cache to new value
             if (cached_chunk_value_ != nullptr) {
                 delete cached_chunk_value_;
             }
             cached_chunk_value_ = new_value;
+            dirty_cache_ = true;
 
             if (commit) {
                 put_(chunk_idx, *new_value);
