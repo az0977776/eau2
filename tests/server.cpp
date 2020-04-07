@@ -14,6 +14,7 @@
 // The server defaults to the local machine's ip address, ip addresses passed will be ignored
 int main() {
     assert(get_thread_count() > 1);
+    Config config;
     Server* s = new Server("127.0.0.1");
 
     // char buf[1024]; 
@@ -31,7 +32,7 @@ int main() {
     //     }
     // }
 
-    sleep(20);
+    sleep(config.SERVER_UP_TIME);
     
     delete s;
     return 0;

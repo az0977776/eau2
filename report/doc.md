@@ -6,7 +6,7 @@ The eua2 system is a system that allows users to run applications involving data
 # Architecture
 
 ## Network and Key-Value Store Layer
-This layer is a distributed KV store running on multiple node. Each KV store node has part of the data, and the KV store nodes talk to exchange data when needed. All of the networking and concurrency control is hidden here.
+This layer is a distributed KV store running on multiple nodes. Each KV store node has part of the data, and the KV store nodes talk to exchange data when needed. All of the networking and concurrency control is hidden here.
 
 ### Server and Client startup/setup
 To setup the system, the registration server must first be started. Clients (KV Store nodes) will start after and connect to the server. The server keeps track of all registered clients and broadcasts all registered clients to each of the registered clients. This allows the clients to discover all other clients in the system.

@@ -17,7 +17,7 @@
 #include "../util/string.h"
 #include "../util/serial.h"
 #include "../util/thread.h"
-#include "../util/constant.h"
+#include "../util/config.h"
 
 // to be implemented from
 // this is a class that has a callback method to be called when a message is returned
@@ -90,18 +90,20 @@ class Network : public Object {
         // This is a pool of Thread objects that can start threads for each connection
         ConnectionThread** connection_threads_;
         size_t connection_count_;
+        
+        Config config_;
 
-        Network() {
+        Network() : config_() {
             quitting_ = false;
-            connection_threads_ = new ConnectionThread*[CLIENT_NUM];
-            for (size_t i = 0; i < CLIENT_NUM; i++) {
+            connection_threads_ = new ConnectionThread*[config_.CLIENT_NUM];
+            for (size_t i = 0; i < config_.CLIENT_NUM; i++) {
                 connection_threads_[i] = new ConnectionThread(this);
             }
             connection_count_ = 0;
         }
 
         ~Network() {
-            for (size_t i = 0; i < CLIENT_NUM; i++) {
+            for (size_t i = 0; i < config_.CLIENT_NUM; i++) {
                 delete connection_threads_[i];
             }
             delete[] connection_threads_;
@@ -117,8 +119,8 @@ class Network : public Object {
         void send_payload_(int fd, Header &header) {
             char* buf = header.serialize();
 
-            for (size_t i = 0; i < header.get_payload_size(); i += MAX_PACKET_LENGTH) {
-                size_t packet_size = header.get_payload_size() - i < MAX_PACKET_LENGTH? header.get_payload_size() - i : MAX_PACKET_LENGTH;
+            for (size_t i = 0; i < header.get_payload_size(); i += config_.MAX_PACKET_LENGTH) {
+                size_t packet_size = header.get_payload_size() - i < config_.MAX_PACKET_LENGTH? header.get_payload_size() - i : config_.MAX_PACKET_LENGTH;
                 abort_if_not(send_chars(fd, packet_size, buf + i), "failed to send a packet payload");
             }
             delete[] buf;
@@ -196,8 +198,8 @@ class Network : public Object {
         char* receive_payload_(int fd, size_t payload_size) {
             char* payload = new char[payload_size];
 
-            for (size_t i = 0; i < payload_size; i += MAX_PACKET_LENGTH) {
-                size_t packet_size = payload_size - i < MAX_PACKET_LENGTH? payload_size - i : MAX_PACKET_LENGTH;
+            for (size_t i = 0; i < payload_size; i += config_.MAX_PACKET_LENGTH) {
+                size_t packet_size = payload_size - i < config_.MAX_PACKET_LENGTH? payload_size - i : config_.MAX_PACKET_LENGTH;
                 abort_if_not(read(fd, payload + i, packet_size), "failed to receive a packet payload");
             }
             return payload;
@@ -282,7 +284,7 @@ class Network : public Object {
             abort_if_not(inet_pton(AF_INET, listen_ip, &adr.sin_addr) > 0, "get_listen_socket(): failed to convert string ip address to bytes");
             adr.sin_port = htons( listen_port ); // uses the listen port
             abort_if_not(bind(ret_fd, (struct sockaddr *)&adr, sizeof(adr))>=0, "get_listen_socket(): failed to bind on the file descriptor");
-            abort_if_not(listen(ret_fd, CLIENT_NUM) >= 0, "get_listen_socket(): failed to listen to file descriptor");
+            abort_if_not(listen(ret_fd, config_.CLIENT_NUM) >= 0, "get_listen_socket(): failed to listen to file descriptor");
             return ret_fd;
         }
 
@@ -321,11 +323,11 @@ class Network : public Object {
                     abort_if_not(new_fd != -1, "Accept connection: failed to accept connection");
                     
                     // can receive up to CLIENT_NUM connections at once
-                    connection_thread = connection_threads_[connection_count_++ % CLIENT_NUM];
+                    connection_thread = connection_threads_[connection_count_++ % config_.CLIENT_NUM];
                     while (connection_thread->is_in_use()) {
                         // if the current thread is in use then move to the next one. 
                         // There should always be at least one open connection thread 
-                        connection_thread = connection_threads_[connection_count_++ % CLIENT_NUM];
+                        connection_thread = connection_threads_[connection_count_++ % config_.CLIENT_NUM];
                     }
                     connection_thread->set_fd(new_fd);
                     // start a new thread
@@ -418,21 +420,22 @@ class Server : public Network {
         const char* server_ip_;
 
         pthread_mutex_t lock_;  // this locks both the array and the size t for both reads and writes
-        struct sockaddr_in client_info_[CLIENT_NUM];    // directory of clients
+        struct sockaddr_in* client_info_;    // directory of clients
         size_t client_count_;
 
         Server(const char* server_ip) : Network() {
             abort_if_not(pthread_mutex_init(&lock_, NULL) == 0, "Client: Failed to create mutex");
+            client_info_ = new sockaddr_in[config_.CLIENT_NUM];
             server_ip_ = server_ip;
             client_count_ = 0;
-            server_fd_ = get_listen_socket(server_ip, SERVER_LISTEN_PORT);
+            server_fd_ = get_listen_socket(server_ip, config_.SERVER_LISTEN_PORT);
 
             listening_thread_ = new ListeningThread(this);
             listening_thread_->start();
         }
 
         ~Server() {
-            printf("[SERVER] Shutting down.\n");
+            printf("[SERVER] Shutting down\n");
             shutdown_clients();
 
             // set the quitting flag and then wait for the listening thead to finish
@@ -442,13 +445,15 @@ class Server : public Network {
             delete listening_thread_;
             close(server_fd_);
 
+            delete[] client_info_;
+
             pthread_mutex_destroy(&lock_); 
         }
 
         virtual sockaddr_in get_sockaddr() {
             struct sockaddr_in addr;
             addr.sin_family = AF_INET;
-            addr.sin_port = SERVER_LISTEN_PORT;
+            addr.sin_port = config_.SERVER_LISTEN_PORT;
             abort_if_not(inet_pton(AF_INET, server_ip_, &addr.sin_addr) > 0, "Server failed to get sockaddr");
             return addr;
         }
@@ -545,10 +550,10 @@ class Server : public Network {
                     r = dynamic_cast<Register*>(message);
                     abort_if_not(r != nullptr, "Server failed to cast Register type message.");
 
-                    if (indexOf(r->get_sender()) == MAX_SIZE_T) {
+                    if (indexOf(r->get_sender()) == config_.MAX_SIZE_T) {
                         pthread_mutex_lock(&lock_);
                         // enforce limit of clients that have registered
-                        abort_if_not(client_count_ < CLIENT_NUM, "Server.handle_message: To many clients registered");
+                        abort_if_not(client_count_ < config_.CLIENT_NUM, "Server.handle_message: To many clients registered");
                         
                         client_info_[client_count_++] = r->get_sender();
 
@@ -563,9 +568,9 @@ class Server : public Network {
                         delete client_ipps;
 
                         // broadcast to all clients
-                        printf("[SERVER] currently %zu clients are connected\n", client_count_);
+                        printf("[SERVER] Currently %zu clients are connected\n", client_count_);
                         
-                        if (client_count_ == CLIENT_NUM) {
+                        if (client_count_ == config_.CLIENT_NUM) {
                             broadcast_directory();
                         }
                         pthread_mutex_unlock(&lock_);
@@ -575,7 +580,7 @@ class Server : public Network {
                     d = dynamic_cast<Deregister*>(message);
                     abort_if_not(d != nullptr, "Server failed to cast Deregister type message.");
                     idx = indexOf(d->get_sender());
-                    if (idx != MAX_SIZE_T) {
+                    if (idx != config_.MAX_SIZE_T) {
                         pthread_mutex_lock(&lock_);
                         String* client = get_client_info(idx);
                         printf("[SERVER] Deregistering client ip: %s\n", client->c_str());
@@ -652,7 +657,7 @@ class Client : public Network {
             // when this returns, this thread has the lock
             wait_for_dir_();
             current_node_idx_ = current_dir_->index_of(client_ip, listening_port_);
-            abort_if_not(current_node_idx_ < CLIENT_NUM, "Failed to find client in directory");
+            abort_if_not(current_node_idx_ < config_.CLIENT_NUM, "Failed to find client in directory");
 
             pthread_mutex_unlock(&lock_);
         }
@@ -661,7 +666,7 @@ class Client : public Network {
             size_t resp_size;
             // deregister before closing anything
             Deregister deregister(get_sockaddr());
-            int server_fd = connect_to(server_ip_, SERVER_LISTEN_PORT);
+            int server_fd = connect_to(server_ip_, config_.SERVER_LISTEN_PORT);
             send_message(server_fd, deregister, resp_size);
             abort_if_not(resp_size == 0, "Client deregister: Got a response back");
 
@@ -762,7 +767,7 @@ class Client : public Network {
         // register this client against the server
         void server_register() {
             size_t resp_size;
-            int dest_sock = connect_to(server_ip_, SERVER_LISTEN_PORT);
+            int dest_sock = connect_to(server_ip_, config_.SERVER_LISTEN_PORT);
             Register message(get_sockaddr());
             send_message(dest_sock, message, resp_size);
             abort_if_not(resp_size == 0, "Server Register: Got a response back");

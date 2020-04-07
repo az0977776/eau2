@@ -7,7 +7,7 @@
 
 #include "../util/object.h"
 #include "../util/string.h"
-#include "../util/constant.h"
+#include "../util/config.h"
 
 #include <pthread.h>
 
@@ -52,10 +52,11 @@ class KVStore : public Object {
 
         // network layer
         Client* client_;
+        Config config_;
 
         KVStore() : KVStore(true) { }
 
-        KVStore(bool server) : map_() {
+        KVStore(bool server) : map_(), config_() {
             abort_if_not(pthread_mutex_init(&lock_, NULL) == 0, "KVStore: Failed to create mutex");
             server_ = server;
             
@@ -65,7 +66,7 @@ class KVStore : public Object {
                 node_index_ = -1; 
 
                 // create network
-                client_ = new Client(SERVER_IP, CLIENT_IP, new KVStoreMessageHandler(this));
+                client_ = new Client(config_.SERVER_IP, config_.CLIENT_IP, new KVStoreMessageHandler(this));
                 node_index_ = client_->get_index();
             } else {
                 // no server is running so don't start a client
@@ -103,7 +104,7 @@ class KVStore : public Object {
 
         size_t num_nodes() {
             if (server_) {
-                return CLIENT_NUM;
+                return config_.CLIENT_NUM;
             } else {
                 return 1;
             }
@@ -244,6 +245,10 @@ class KVStore : public Object {
                 fail("KVStore.put(): Got a key to a different node while client was not running");
             }
         }
+
+        Config& get_config() {
+            return config_;
+        }
 };
 
 
@@ -252,7 +257,7 @@ class KVStore : public Object {
 // Make sure that the node index of KVStore is set before continuing. The node index is MAZ_SIZE_T
 // before it is set to the correct value
 void KVStoreMessageHandler::wait_for_node_index() {
-    while (kvs_->node_index() == MAX_SIZE_T) {
+    while (kvs_->node_index() == Config::MAX_SIZE_T) {
         sleep(1);
     } 
 }

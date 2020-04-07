@@ -12,7 +12,7 @@
 #include "../kvstore/keyvalue.h"
 #include "../kvstore/keyvaluestore.h"
 
-#include "../util/constant.h"
+#include "../util/config.h"
 
 enum ColumnType {
     UNKNOWN = 0,
@@ -179,18 +179,18 @@ class Column : public Object {
         }
 
         virtual size_t get_chunk_idx(size_t idx) {
-            return idx / CHUNK_SIZE;
+            return idx / kv_->get_config().CHUNK_SIZE;
         }
 
         virtual size_t get_item_idx(size_t idx) {
-            return idx % CHUNK_SIZE;
+            return idx % kv_->get_config().CHUNK_SIZE;
         }
 
         // checks if the chunk array needs to be expanded and expands it if true
         // the initial_chunk_size is the size of the new Value that is created during expansion
         void check_and_reallocate_(size_t initial_chunk_size) {
             // when the latest chunk is full
-            if (len_ % CHUNK_SIZE == 0) {
+            if (len_ % kv_->get_config().CHUNK_SIZE == 0) {
                 size_t chunk_idx = get_chunk_idx(len_);
 
                 Key* k = generate_chunk_key(chunk_idx);
@@ -213,7 +213,7 @@ class Column : public Object {
 
         template <class T>
         void push_back_(T val, bool commit) {
-            check_and_reallocate_(CHUNK_SIZE * sizeof(T));
+            check_and_reallocate_(kv_->get_config().CHUNK_SIZE * sizeof(T));
             bool owned = false;
             size_t chunk_idx = get_chunk_idx(len_);
             size_t item_idx = get_item_idx(len_);
@@ -309,18 +309,18 @@ class Column : public Object {
 
         /** Type appropriate push_back methods. Calling the wrong method is
             * undefined behavior. **/
-        virtual void push_back(int val) {
-            push_back(val, true);
-        }
-        virtual void push_back(bool val) {
-            push_back(val, true);
-        }
-        virtual void push_back(double val) {
-            push_back(val, true);
-        }
-        virtual void push_back(String* val) {
-            push_back(val, true);
-        }
+        // virtual void push_back(int val) {
+        //     push_back(val, true);
+        // }
+        // virtual void push_back(bool val) {
+        //     push_back(val, true);
+        // }
+        // virtual void push_back(double val) {
+        //     push_back(val, true);
+        // }
+        // virtual void push_back(String* val) {
+        //     push_back(val, true);
+        // }
 
         /** Type appropriate push_back methods. Calling the wrong method is
             * undefined behavior. **/
@@ -362,8 +362,8 @@ class Column : public Object {
             size_t chunk_idx = get_chunk_idx(end_row_idx);
             for (size_t i = chunk_idx; i < chunk_keys_->size(); i++) {
                 if (chunk_keys_->get(i)->get_index() == kv_->node_index()) {
-                    start_row_idx = i * CHUNK_SIZE;
-                    end_row_idx = start_row_idx + CHUNK_SIZE;
+                    start_row_idx = i * kv_->get_config().CHUNK_SIZE;
+                    end_row_idx = start_row_idx + kv_->get_config().CHUNK_SIZE;
                     end_row_idx = end_row_idx < size() ? end_row_idx : size();
                     return true;
                 }
@@ -422,9 +422,10 @@ class BoolColumn : public Column {
             va_start (arguments, n);
             for (int i = 0; i <  n; i++ ) {
                 bool b = va_arg(arguments, int);
-                push_back(b);
+                push_back(b, false);
             }
             va_end(arguments);
+            commit_cache();
         } 
         
         // NOTE: takes ownership of chunk_keys and the keys inside the Array
@@ -434,11 +435,11 @@ class BoolColumn : public Column {
 
         // which size_t to look for the bit in
         size_t get_item_idx(size_t idx) {
-            return (idx % CHUNK_SIZE) / (sizeof(size_t) * 8);
+            return (idx % kv_->get_config().CHUNK_SIZE) / (sizeof(size_t) * 8);
         }
 
         virtual void push_back(bool val, bool commit) {
-            check_and_reallocate_(CHUNK_SIZE / 8);
+            check_and_reallocate_(kv_->get_config().CHUNK_SIZE / 8);
             bool owned = false;
             size_t chunk_idx = get_chunk_idx(len_);
             size_t item_idx = get_item_idx(len_);
@@ -470,9 +471,9 @@ class BoolColumn : public Column {
             }
         }
         
-        virtual void push_back(bool val) {
-            push_back(val, true);
-        }
+        // virtual void push_back(bool val) {
+        //     push_back(val, true);
+        // }
 
         // gets the bool at the index idx
         // if idx is out of bounds, exit
@@ -520,9 +521,10 @@ class IntColumn : public Column {
             va_start (arguments, n);
 
             for (int i = 0; i < n; i++ ) {
-                push_back(va_arg( arguments, int));
+                push_back(va_arg( arguments, int), false);
             }
             va_end(arguments);
+            commit_cache();
         }
         
         // NOTE: takes ownership of chunk_keys and the keys inside the Array
@@ -546,9 +548,10 @@ class IntColumn : public Column {
             Column::push_back_<int>(val, commit);
         }
 
-        virtual void push_back(int val) {
-            push_back(val, true);
-        }
+        // with chunks of size 32 MB, pushbacks should not be committed individually
+        // virtual void push_back(int val) {
+        //     push_back(val, true);
+        // }
 
         char get_type_() {
             return INT;
@@ -570,9 +573,10 @@ class DoubleColumn : public Column {
 
             for (int i = 0; i < n; i++ ) {
                 double f = va_arg(arguments, double);
-                push_back(f);
+                push_back(f, false);
             }
             va_end(arguments);
+            commit_cache();
         }
         
         // NOTE: takes ownership of chunk_keys and the keys inside the Array
@@ -595,9 +599,9 @@ class DoubleColumn : public Column {
             Column::push_back_<double>(val, commit);
         }
 
-        virtual void push_back(double val) {
-            push_back(val, true);
-        }
+        // virtual void push_back(double val) {
+        //     push_back(val, true);
+        // }
 
         char get_type_() {
             return DOUBLE;
@@ -620,9 +624,10 @@ class StringColumn : public Column {
 
             for (int i = 0; i < n; i++ ) {
                 String* tmp = va_arg(arguments, String*);
-                push_back(tmp);
+                push_back(tmp, false);
             }
             va_end(arguments);
+            commit_cache();
         }
         
         // NOTE: takes ownership of chunk_keys and the keys inside the Array
@@ -661,9 +666,9 @@ class StringColumn : public Column {
             return ret;
         }
 
-        virtual void push_back(String* val) {
-            push_back(val, true);
-        }
+        // virtual void push_back(String* val) {
+        //     push_back(val, true);
+        // }
                 
         virtual void push_back(String* val, bool commit) {
             abort_if_not(val != nullptr, "StringColumn.push_back(): val is nullptr");
@@ -723,7 +728,7 @@ Column* Column::deserialize(const char* buf, KVStore* kvs) {
     Array<Key>* keys = new Array<Key>();
 
     if (len != 0) {
-        for (size_t i = 0; i < (len / CHUNK_SIZE) + 1; i++) {
+        for (size_t i = 0; i < (len / kvs->get_config().CHUNK_SIZE) + 1; i++) {
             keys->push_back(Key::deserialize(buf_pointer));
             buf_pointer += keys->get(i)->serial_buf_size();
         }

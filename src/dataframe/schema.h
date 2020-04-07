@@ -5,7 +5,7 @@
 
 #include "../util/object.h"
 #include "../util/string.h"
-#include "../util/constant.h"
+#include "../util/config.h"
 #include "column.h"
 
 /*************************************************************************
@@ -38,7 +38,7 @@ class Schema : public Object {
 
         /** Create an empty schema **/
         Schema() {
-            types_cap_ = ARRAY_STARTING_CAP;
+            types_cap_ = Config::ARRAY_STARTING_CAP;
             types_len_ = 0;
             num_rows_ = 0;
             types_ = new char[types_cap_];
@@ -49,7 +49,7 @@ class Schema : public Object {
         * undefined behavior. The argument is external, a nullptr argument is
         * undefined. **/
         Schema(const char* types) {
-            types_cap_ = ARRAY_STARTING_CAP;
+            types_cap_ = Config::ARRAY_STARTING_CAP;
             types_len_ = 0;
             num_rows_ = 0;
             types_ = new char[types_cap_];

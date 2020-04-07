@@ -21,8 +21,9 @@ void test_int_column() {
     size_t num_elements = 50000;
 
     for (int i = 0 ; i < num_elements; i++) {
-      ic->push_back(i);
+      ic->push_back(i, false);
     }
+    ic->commit_cache();
 
     ASSERT_EQ(ic->size(), num_elements);
     ASSERT_EQ(ic->get(4999), 4999);
@@ -49,8 +50,9 @@ void test_int_constructor() {
 
     // still add more data
     for (int i = 0 ; i < 5000; i++) {
-      ic.push_back(i);
+      ic.push_back(i, false);
     }
+    ic.commit_cache();
 
     ASSERT_EQ(ic.size(), 5005);
     ASSERT_EQ(ic.get(0), -1024);
@@ -131,9 +133,10 @@ void test_double_column() {
     ASSERT_EQ(dc->size(), 0);
 
     for (int i = 0 ; i < 5000; i++) {
-      dc->push_back(i / 8.0);
+      dc->push_back(i / 8.0, false);
     }
 
+    dc->commit_cache();
     ASSERT_EQ(dc->size(), 5000);
     ASSERT_FLOAT_EQ(dc->get(4999), 4999 / 8.0);
 
@@ -183,7 +186,7 @@ void test_double_column_var_args() {
     EXPECT_FLOAT_EQ(dc->get(4), 0.00012345);
     EXPECT_FLOAT_EQ(dc->get(5), 0.4553);
 
-    dc->push_back(-123.456);
+    dc->push_back(-123.456, true);
     EXPECT_FLOAT_EQ(dc->get(6), -123.456);
 
     delete dc;
@@ -208,8 +211,9 @@ void test_string_column() {
     String *b = new String("foo");
 
     for (int i = 0 ; i < 5000; i++) {
-      ic->push_back(a);
+      ic->push_back(a, false);
     }
+    ic->commit_cache();
 
     ASSERT_EQ(ic->size(), 5000);
 
@@ -264,7 +268,7 @@ void test_string_column_var_args() {
     EXPECT_TRUE(sc->get(1)->equals(&s2));
     EXPECT_TRUE(sc->get(2)->equals(&s3));
 
-    sc->push_back(&s4);
+    sc->push_back(&s4, true);
     EXPECT_EQ(sc->size(), 4);
     EXPECT_TRUE(sc->get(3)->equals(&s4));
 
@@ -287,9 +291,10 @@ void test_bool_column() {
     ASSERT_EQ(ic->size(), 0);
 
     for (int i = 0 ; i < 5000; i++) {
-      ic->push_back(i % 2);
+      ic->push_back(i % 2, false);
     }
-
+    ic->commit_cache();
+    
     // our implementation has re allocates at 64, 1024 booleans
     // make sure to check these values
     ASSERT_EQ(ic->size(), 5000);
@@ -346,7 +351,7 @@ void test_bool_column_var_args() {
     EXPECT_TRUE(bc->get(4));
     EXPECT_FALSE(bc->get(5));
 
-    bc->push_back(false);
+    bc->push_back(false, true);
     EXPECT_FALSE(bc->get(6));
 
     
@@ -406,8 +411,9 @@ void test_bool_column_serialize() {
     BoolColumn *bc = new BoolColumn(&s, &kvs);
 
     for (int i = 0 ; i < 5000; i++) {
-      bc->push_back(i % 2);
+      bc->push_back(i % 2, false);
     }
+    bc->commit_cache();
 
     char* serialized_col = bc->serialize();     
 
@@ -436,8 +442,9 @@ void test_bool_column_serial_buf_size() {
     BoolColumn bc(&s, &kvs);
 
     for (int i = 0 ; i < 5000; i++) {
-      bc.push_back(i % 2);
+      bc.push_back(i % 2, false);
     }
+    bc.commit_cache();
 
     size_t buf_len = bc.serial_buf_size();
 
@@ -476,8 +483,9 @@ void test_int_column_serialize() {
     IntColumn *bc = new IntColumn(&s, &kvs);
 
     for (int i = 0 ; i < 5000; i++) {
-      bc->push_back(i);
+      bc->push_back(i, false);
     }
+    bc->commit_cache();
 
     char* serialized_col = bc->serialize();     
 
@@ -505,8 +513,9 @@ void test_int_column_serial_buf_size() {
     IntColumn ic(&s, &kvs);
 
     for (int i = 0 ; i < 5000; i++) {
-      ic.push_back(i);
+      ic.push_back(i, false);
     }
+    ic.commit_cache();
 
     size_t buf_len = ic.serial_buf_size();
 
@@ -544,8 +553,9 @@ void test_double_column_serialize() {
     DoubleColumn *bc = new DoubleColumn(&s, &kvs);
 
     for (int i = 0 ; i < 5000; i++) {
-      bc->push_back(i / 8.0);
+      bc->push_back(i / 8.0, false);
     }
+    bc->commit_cache();
 
     char* serialized_col = bc->serialize();     
 
@@ -573,8 +583,9 @@ void test_double_column_serial_buf_size() {
     DoubleColumn dc(&s, &kvs);
 
     for (int i = 0 ; i < 5000; i++) {
-      dc.push_back(i / 8.0);
+      dc.push_back(i / 8.0, false);
     }
+    dc.commit_cache();
 
     size_t buf_len = dc.serial_buf_size();
 
@@ -616,11 +627,12 @@ void test_string_column_serialize() {
 
     for (int i = 0 ; i < 5000; i++) {
         if (i % 2 == 0) {
-            bc->push_back(&s0);
+            bc->push_back(&s0, false);
         } else {
-            bc->push_back(&s1);
+            bc->push_back(&s1, false);
         }
     }
+    bc->commit_cache();
 
     char* serialized_col = bc->serialize();     
 
@@ -651,11 +663,12 @@ void test_string_column_serial_buf_size() {
 
     for (int i = 0 ; i < 5000; i++) {
         if (i % 2 == 0) {
-            sc.push_back(&s0);
+            sc.push_back(&s0, false);
         } else {
-            sc.push_back(&s1);
+            sc.push_back(&s1, false);
         }
     }
+    sc.commit_cache();
 
     size_t buf_len = sc.serial_buf_size();
 

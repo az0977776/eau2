@@ -578,6 +578,9 @@ class DataFrame : public Object {
             return df;
         }
 
+        // this is implemented at the bottom of sorer.h
+        // static DataFrame* fromFile(const char* filename, Key* key, KVStore* kvs);
+
         static DataFrame* deserialize(const char* buf, KVStore* kvs) {
             Schema schema;
             size_t num_cols = 0;

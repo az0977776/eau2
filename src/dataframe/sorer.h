@@ -11,43 +11,45 @@
 #include "../util/object.h"
 #include "../util/helper.h"
 
-#include "../util/constant.h"
+#include "../util/config.h"
 
 // Reads a file and determines the schema on read
 // @author: Chris Barth <barth.c@husky.neu.edu> and Aaron Wang <wang.aa@husky.neu.edu>
 class SOR : public Object {
     public:
         FILE* file_;
-        String* filename_;
+        Key* key_;
         KVStore* kvs_;
 
-        SOR(const char* filename, KVStore* kvs) { 
+        SOR(const char* filename, Key* key, KVStore* kvs) { 
             kvs_ = kvs;
-            filename_ = new String(filename);
+            key_ = key;
             file_ = fopen(filename, "r");
             abort_if_not(file_ != NULL, "File is null pointer");
         }
 
+        SOR(const char* filename, KVStore* kvs) : SOR(filename, new Key(0, filename), kvs) { }
+
         ~SOR() {
             fclose(file_);
-            delete filename_;
+            delete key_;
         }
         
         // Reads in the data from the file starting at the from byte 
         // and reading at most len bytes
         DataFrame* read(size_t from, size_t len) {
-            Key* key = new Key(0, filename_->c_str());
             Schema* schema = infer_columns_(from, len);
-            DataFrame* df = new DataFrame(*schema, *key, kvs_);
+            // don't add self to kvstore
+            DataFrame* df = new DataFrame(*schema, *key_, kvs_, false);
             parse_(df, from, len);
             delete schema;
-            delete key;
+            df->commit();
             return df;
         }
 
         DataFrame* read() {
             // -1 is the max size_t value
-            return read(0, -1);
+            return read(0, Config::MAX_SIZE_T);
         }
 
         // moves the file pointer to the start of the next line.
@@ -55,9 +57,9 @@ class SOR : public Object {
             if (from == 0) {
                 fseek(file_, from, SEEK_SET);
             } else {
-                char buf[BUFF_LEN];
+                char buf[Config::BUFF_LEN];
                 fseek(file_, from - 1, SEEK_SET);
-                fgets(buf, BUFF_LEN, file_);
+                fgets(buf, Config::BUFF_LEN, file_);
             }
         }
 
@@ -68,14 +70,14 @@ class SOR : public Object {
         // infers and creates the column objects
         Schema* infer_columns_(size_t from, size_t len) {
             seek_(from);
-            char buf[BUFF_LEN];
+            char buf[Config::BUFF_LEN];
 
             size_t total_bytes = 0;
             size_t row_count = 0;
 
             StrBuff col_types;
 
-            while (fgets(buf, BUFF_LEN, file_) != nullptr && row_count < INFER_LINE_COUNT) {
+            while (fgets(buf, Config::BUFF_LEN, file_) != nullptr && row_count < Config::INFER_LINE_COUNT) {
                 row_count++;
                 total_bytes += strlen(buf);
                 if (total_bytes >= len) {
@@ -169,12 +171,12 @@ class SOR : public Object {
         // read the rows from the starting byte up to len bytes into Columns.
         void parse_(DataFrame* df, size_t from, size_t len) {
             seek_(from);
-            char buf[BUFF_LEN];
+            char buf[Config::BUFF_LEN];
             Schema schema = df->get_schema();
             Row df_row(schema);
 
             size_t total_bytes = 0;
-            while (fgets(buf, BUFF_LEN, file_) != nullptr) {
+            while (fgets(buf, Config::BUFF_LEN, file_) != nullptr) {
                 total_bytes += strlen(buf);
                 if (total_bytes >= len) {
                     break;

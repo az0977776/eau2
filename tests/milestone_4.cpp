@@ -263,14 +263,14 @@ class WordCount: public Application {
         void reduce() {
             if (this_node() != 0) 
                 return;
-            print("reducing counts...");
+            print("reducing counts...\n");
             Map<String, Num> map;
             Key* own = mk_key(0);
             DataFrame* df = get(*own);
 
             merge(df, map);
 
-            for (size_t i = 1; i < CLIENT_NUM; ++i) { // merge other nodes
+            for (size_t i = 1; i < config_.CLIENT_NUM; ++i) { // merge other nodes
                 Key* ok = mk_key(i);
                 df = getAndWait(*ok);
                 merge(df, map);
