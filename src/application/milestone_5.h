@@ -59,7 +59,7 @@ class Set : public Object {
         /** Is idx in the set?  See comment for set(). */
         bool test(size_t idx) {
             if (idx >= size_) {
-                return true;
+                return false; // out of bounds means it is not in the set
             } // ignoring out of bound reads
             return vals_[idx];
         }
@@ -141,7 +141,7 @@ class ProjectsTagger : public Reader {
     Set newProjects;  // newly tagged collaborator projects
 
     ProjectsTagger(Set& uSet, Set& pSet, DataFrame* proj):
-        uSet(uSet), pSet(pSet), newProjects(proj) {}
+        uSet(uSet), pSet(pSet), newProjects(proj) { }
 
     /** The data frame must have at least two integer columns. The newProject
      * set keeps track of projects that were newly tagged (they will have to
@@ -200,7 +200,13 @@ class Linus : public Application {
         int LINUS = 4967;   // The uid of Linus (offset in the user df)
         const char* PROJ = "data/projects.ltgt";
         const char* USER = "data/users.ltgt";
-        const char* COMM = "data/commits.ltgt";
+        const char* COMM = "data/commits.ltgt";      
+
+        // int LINUS = 0;
+        // const char* PROJ = "data/generated_projects.txt";
+        // const char* USER = "data/generated_users.txt";
+        // const char* COMM = "data/generated_commits.txt";
+
         DataFrame* projects; //  pid x project name  -- 'IS'
         DataFrame* users;  // uid x user name        -- 'IS'
         DataFrame* commits;  // pid x uid x uid      -- 'III'  -- project x author x commiter
@@ -264,6 +270,8 @@ class Linus : public Application {
             SetUpdater updater(delta);  
             newUsers->map(updater); // all of the new users are copied to delta.
             delete newUsers;
+
+            // delta should only have 1 person in it
 
             ProjectsTagger project_tagger(delta, *pSet, projects);
             commits->local_map(project_tagger); // marking all projects touched by delta
@@ -332,3 +340,193 @@ class Linus : public Application {
         }
 }; // Linus
 
+
+
+
+/*
+LINUS on 4 stages whole files:
+-------------------------------------------
+NODE 0:     125486231 projects
+NODE 0:     32411734 users
+NODE 0:     117936711 commits
+NODE 0: Stage 0
+NODE 2: Stage 0
+NODE 1: Stage 0
+NODE 3: Stage 0
+NODE 0:     About to merge new Projects
+NODE 1:     About to merge new Projects
+NODE 1:     sending 1643 / 125486231 elements to master node
+NODE 2:     About to merge new Projects
+NODE 2:     sending 1438 / 125486231 elements to master node
+NODE 3:     About to merge new Projects
+NODE 3:     sending 1495 / 125486231 elements to master node
+NODE 0:     received delta of 1643 elements from node 1
+NODE 0:     received delta of 1438 elements from node 2
+NODE 0:     received delta of 1495 elements from node 3
+NODE 0:     storing 6164 / 125486231 merged elements
+NODE 1:     receiving 6164 merged elements
+NODE 2:     receiving 6164 merged elements
+NODE 3:     receiving 6164 merged elements
+NODE 0:     About to merge new Users
+NODE 1:     About to merge new Users
+NODE 1:     sending 21241 / 32411734 elements to master node
+NODE 2:     About to merge new Users
+NODE 2:     sending 19633 / 32411734 elements to master node
+NODE 3:     About to merge new Users
+NODE 3:     sending 20926 / 32411734 elements to master node
+NODE 0:     received delta of 21241 elements from node 1
+NODE 0:     received delta of 19633 elements from node 2
+NODE 0:     received delta of 20926 elements from node 3
+NODE 0:     storing 36627 / 32411734 merged elements
+NODE 0:     after stage 0:
+NODE 0:         tagged projects: 6164 / 125486231
+NODE 0:         tagged users: 36627 / 32411734
+NODE 0: Stage 1
+NODE 1:     receiving 36627 merged elements
+NODE 2:     receiving 36627 merged elements
+NODE 1:     after stage 0:
+NODE 1:         tagged projects: 6164 / 125486231
+NODE 1:         tagged users: 36627 / 32411734
+NODE 1: Stage 1
+NODE 2:     after stage 0:
+NODE 2:         tagged projects: 6164 / 125486231
+NODE 2:         tagged users: 36627 / 32411734
+NODE 2: Stage 1
+NODE 3:     receiving 36627 merged elements
+NODE 3:     after stage 0:
+NODE 3:         tagged projects: 6164 / 125486231
+NODE 3:         tagged users: 36627 / 32411734
+NODE 3: Stage 1
+NODE 1:     About to merge new Projects
+NODE 1:     sending 348783 / 125486231 elements to master node
+NODE 2:     About to merge new Projects
+NODE 2:     sending 338350 / 125486231 elements to master node
+NODE 3:     About to merge new Projects
+NODE 3:     sending 340244 / 125486231 elements to master node
+NODE 0:     About to merge new Projects
+NODE 0:     received delta of 348783 elements from node 1
+NODE 0:     received delta of 338350 elements from node 2
+NODE 0:     received delta of 340244 elements from node 3
+NODE 0:     storing 1212262 / 125486231 merged elements
+NODE 1:     receiving 1212262 merged elements
+NODE 2:     receiving 1212262 merged elements
+NODE 3:     receiving 1212262 merged elements
+NODE 0:     About to merge new Users
+NODE 2:     About to merge new Users
+NODE 2:     sending 522681 / 32411734 elements to master node
+NODE 1:     About to merge new Users
+NODE 1:     sending 523301 / 32411734 elements to master node
+NODE 3:     About to merge new Users
+NODE 3:     sending 507727 / 32411734 elements to master node
+NODE 0:     received delta of 523301 elements from node 1
+NODE 0:     received delta of 522681 elements from node 2
+NODE 0:     received delta of 507727 elements from node 3
+NODE 0:     storing 1450973 / 32411734 merged elements
+NODE 0:     after stage 1:
+NODE 0:         tagged projects: 1218426 / 125486231
+NODE 0:         tagged users: 1487600 / 32411734
+NODE 0: Stage 2
+NODE 1:     receiving 1450973 merged elements
+NODE 2:     receiving 1450973 merged elements
+NODE 3:     receiving 1450973 merged elements
+NODE 1:     after stage 1:
+NODE 1:         tagged projects: 1218426 / 125486231
+NODE 1:         tagged users: 1487600 / 32411734
+NODE 2:     after stage 1:
+NODE 2:         tagged projects: 1218426 / 125486231
+NODE 2:         tagged users: 1487600 / 32411734
+NODE 1: Stage 2
+NODE 2: Stage 2
+NODE 3:     after stage 1:
+NODE 3:         tagged projects: 1218426 / 125486231
+NODE 3:         tagged users: 1487600 / 32411734
+NODE 3: Stage 2
+NODE 0:     About to merge new Projects
+NODE 2:     About to merge new Projects
+NODE 2:     sending 4951899 / 125486231 elements to master node
+NODE 1:     About to merge new Projects
+NODE 1:     sending 5021627 / 125486231 elements to master node
+NODE 3:     About to merge new Projects
+NODE 3:     sending 4949844 / 125486231 elements to master node
+NODE 0:     received delta of 5021627 elements from node 1
+NODE 0:     received delta of 4951899 elements from node 2
+NODE 0:     received delta of 4949844 elements from node 3
+NODE 0:     storing 18012852 / 125486231 merged elements
+NODE 2:     receiving 18012852 merged elements
+NODE 3:     receiving 18012852 merged elements
+NODE 1:     receiving 18012852 merged elements
+NODE 0:     About to merge new Users
+NODE 2:     About to merge new Users
+NODE 2:     sending 1192238 / 32411734 elements to master node
+NODE 1:     About to merge new Users
+NODE 1:     sending 1208246 / 32411734 elements to master node
+NODE 3:     About to merge new Users
+NODE 3:     sending 1159763 / 32411734 elements to master node
+NODE 0:     received delta of 1208246 elements from node 1
+NODE 0:     received delta of 1192238 elements from node 2
+NODE 0:     received delta of 1159763 elements from node 3
+NODE 0:     storing 3488007 / 32411734 merged elements
+NODE 0:     after stage 2:
+NODE 0:         tagged projects: 19231278 / 125486231
+NODE 0:         tagged users: 4975607 / 32411734
+NODE 0: Stage 3
+NODE 1:     receiving 3488007 merged elements
+NODE 2:     receiving 3488007 merged elements
+NODE 3:     receiving 3488007 merged elements
+NODE 1:     after stage 2:
+NODE 1:         tagged projects: 19231278 / 125486231
+NODE 1:         tagged users: 4975607 / 32411734
+NODE 1: Stage 3
+NODE 2:     after stage 2:
+NODE 2:         tagged projects: 19231278 / 125486231
+NODE 2:         tagged users: 4975607 / 32411734
+NODE 2: Stage 3
+NODE 3:     after stage 2:
+NODE 3:         tagged projects: 19231278 / 125486231
+NODE 3:         tagged users: 4975607 / 32411734
+NODE 3: Stage 3
+NODE 0:     About to merge new Projects
+NODE 2:     About to merge new Projects
+NODE 2:     sending 4122277 / 125486231 elements to master node
+NODE 1:     About to merge new Projects
+NODE 1:     sending 4116960 / 125486231 elements to master node
+NODE 3:     About to merge new Projects
+NODE 3:     sending 4149273 / 125486231 elements to master node
+NODE 0:     received delta of 4116960 elements from node 1
+NODE 0:     received delta of 4122277 elements from node 2
+NODE 0:     received delta of 4149273 elements from node 3
+NODE 0:     storing 15615372 / 125486231 merged elements
+NODE 2:     receiving 15615372 merged elements
+NODE 1:     receiving 15615372 merged elements
+NODE 3:     receiving 15615372 merged elements
+NODE 0:     About to merge new Users
+NODE 2:     About to merge new Users
+NODE 2:     sending 722301 / 32411734 elements to master node
+NODE 1:     About to merge new Users
+NODE 1:     sending 732535 / 32411734 elements to master node
+NODE 3:     About to merge new Users
+NODE 3:     sending 731608 / 32411734 elements to master node
+NODE 0:     received delta of 732535 elements from node 1
+NODE 0:     received delta of 722301 elements from node 2
+NODE 0:     received delta of 731608 elements from node 3
+NODE 0:     storing 2313602 / 32411734 merged elements
+NODE 0:     after stage 3:
+NODE 0:         tagged projects: 34846650 / 125486231
+NODE 0:         tagged users: 7289209 / 32411734
+NODE 0: Milestone5: DONE
+NODE 2:     receiving 2313602 merged elements
+NODE 1:     receiving 2313602 merged elements
+NODE 3:     receiving 2313602 merged elements
+NODE 2:     after stage 3:
+NODE 2:         tagged projects: 34846650 / 125486231
+NODE 2:         tagged users: 7289209 / 32411734
+NODE 2: Milestone5: DONE
+NODE 1:     after stage 3:
+NODE 1:         tagged projects: 34846650 / 125486231
+NODE 1:         tagged users: 7289209 / 32411734
+NODE 1: Milestone5: DONE
+NODE 3:     after stage 3:
+NODE 3:         tagged projects: 34846650 / 125486231
+NODE 3:         tagged users: 7289209 / 32411734
+NODE 3: Milestone5: DONE
+*/
