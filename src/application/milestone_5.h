@@ -1,7 +1,8 @@
 #include <unistd.h>
-#include "../src/application.h"
-#include "../src/util/string.h"
-#include "../src/util/config.h"
+
+#include "application.h"
+#include "../util/string.h"
+#include "../util/config.h"
 
 /**
  * The input data is a processed extract from GitHub.
@@ -331,14 +332,3 @@ class Linus : public Application {
         }
 }; // Linus
 
-
-int main() {
-
-    Linus lin;
-
-    lin.run_();
-
-    sleep(70);
-
-    return 0;
-}

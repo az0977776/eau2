@@ -1,10 +1,10 @@
 //lang:CwC
 #pragma once
 
-#include "util/object.h"
-#include "dataframe/sorer.h"
-#include "dataframe/dataframe.h"
-#include "kvstore/keyvaluestore.h"
+#include "../util/object.h"
+#include "../dataframe/sorer.h"
+#include "../dataframe/dataframe.h"
+#include "../kvstore/keyvaluestore.h"
 
 /**
  * This is the parent class to all applications that use a distributed key/value store.
@@ -56,7 +56,8 @@ class Application : public Object{
             SOR sorer(filename, key, kvs);
 
             // create df with key in kvs
-            return sorer.read(0, 1000 * 1000 * 1);
+            // return sorer.read(0, 1000 * 1000 * 1000);
+            return sorer.read();
         }
         
         // what is the index of this node.

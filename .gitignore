@@ -8,3 +8,7 @@ tests/unit_tests/sorer_test.dSYM/*
 tests/unit_tests/lib/libgtest.a
 .vscode/settings.json
 tests/unit_tests/googletest-src
+.DS_Store
+data/commits.ltgt
+data/projects.ltgt
+data/users.ltgt

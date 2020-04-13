@@ -1,8 +1,8 @@
 #include <stdlib.h>
 
-#include "../src/dataframe/dataframe.h"
-#include "../src/kvstore/keyvalue.h"
-#include "../src/application.h"
+#include "../dataframe/dataframe.h"
+#include "../kvstore/keyvalue.h"
+#include "application.h"
 
 static const size_t SZ = 100 * 1000;
 
@@ -52,15 +52,3 @@ class Demo : public Application {
       // printf("Summarizer is done\n");
     }
 };
-
-
-int main() {
-    Demo demo;
-
-    demo.run_();
-
-    // this is to keep the program running
-    sleep(20);
-
-    return 0;
-}

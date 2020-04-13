@@ -211,13 +211,19 @@ void test_string_column() {
     String *b = new String("foo");
 
     for (int i = 0 ; i < 5000; i++) {
-      ic->push_back(a, false);
+        if (i % 2 == 0) {
+            ic->push_back(a, false);
+        } else {
+            ic->push_back(b, false);
+        }
     }
     ic->commit_cache();
 
     ASSERT_EQ(ic->size(), 5000);
 
-    ASSERT_TRUE(ic->get(4999)->equals(a));
+    ASSERT_TRUE(ic->get(4999)->equals(b));
+    ASSERT_TRUE(ic->get(3000)->equals(a));
+    ASSERT_TRUE(ic->get(2)->equals(a));
 
     // delete ic;
     delete a;

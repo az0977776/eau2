@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
-#include "../src/kvstore/keyvaluestore.h"
-#include "../src/dataframe/dataframe.h"
+#include "../kvstore/keyvaluestore.h"
+#include "../dataframe/dataframe.h"
 
 class Trivial {
     public:
@@ -31,14 +31,3 @@ class Trivial {
             delete key;
         }
 };
-
-int main() {
-    KVStore kv(false);  // do not run the client
-    Trivial t(0, &kv);
-    t.run_();
-
-    printf("Milestone2: OK\n");
-    return 0;
-}
-
-

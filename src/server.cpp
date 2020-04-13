@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "../src/kvstore/network.h"
-#include "../src/util/thread.h"
+#include "kvstore/network.h"
+#include "util/thread.h"
 
 // The server defaults to the local machine's ip address, ip addresses passed will be ignored
 int main() {

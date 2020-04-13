@@ -109,4 +109,8 @@ class Array : public Object{
 
             return ret;
         }
+
+        virtual void clear() {
+            len_ = 0;
+        }
 };
