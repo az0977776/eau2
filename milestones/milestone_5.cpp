@@ -1,9 +1,10 @@
 #include "../src/application/milestone_5.h"
+#include "../src/kvstore/keyvaluestore.h"
 
 
 int main() {
-
-    Linus lin;
+    KVStore kvs;
+    Linus lin(kvs);
 
     lin.run_();
     /**

@@ -13,11 +13,11 @@
  */
 class Application : public Object{
     public:
-        KVStore kv;
+        KVStore& kv;
         size_t node_idx_;
         Config config_;
 
-        Application() : kv(), config_() {
+        Application(KVStore& kvs) : kv(kvs), config_() {
             node_idx_ = kv.node_index();
         }
 

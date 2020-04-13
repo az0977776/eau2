@@ -1,9 +1,11 @@
 #include <stdlib.h>
 
 #include "../src/application/milestone_3.h"
+#include "../src/kvstore/keyvaluestore.h"
 
 int main() {
-    Demo demo;
+    KVStore kvs;
+    Demo demo(kvs);
 
     demo.run_();
 

@@ -126,6 +126,8 @@ Each column caches a single chunk for both puts and gets to the key value store.
 
 The column has a boolean flag to indicate if the cached chunk has been mutated. This flag is set during pushing elements onto the column. If the flag is not set, then the chunk is not committed when being swapped out.
 
+The `StringColumn` has an additional cache that is built on a `String` array. Because strings are not always the same size like the other data types, they cannot be easily serialized and deserialized from `String` objects into `Value` objects. The method of finding where to put strings in a value is by iterating through the entire value buffer of strings that are delimited by null bytes. This operation can get very expensive if the value buffers are very large. To prevent this find operation on each get and push, `String` objects are stored in an array cache and the entire array is serialized at once when needed.
+
 ### DataFrame
 The `DataFrame` class holds `Key` objects that are associated with `Value` objects representing `Column` objects that hold data. 
 A `DataFrame` is serialized with the format `<dataframe key><num column>[<column>...]`.
@@ -146,6 +148,17 @@ DataFrame* get(Key* k)
 Getting a DataFrame, blocks/waits until `Key` exists if it does not exist.
 ```cpp
 DataFrame* getAndWait(Key* k)
+```
+
+### Configuration
+There needs to be a `config.txt` file in the directory that the application is run from. In the `config.txt` file there should be specifications for the number of clients that will be run as `CLIENT_NUM`, the ip address of this application as `CLIENT_IP`, the size of the distributed chunks as `CHUNK_SIZE`, and the amount of time that the server should stay up in seconds as `SERVER_UP_TIME`. These allow each application to have variable configs.
+
+Example config.txt
+```
+CLIENT_NUM=3
+CLIENT_IP=127.0.0.1
+CHUNK_SIZE=1024
+SERVER_UP_TIME=20
 ```
 
 

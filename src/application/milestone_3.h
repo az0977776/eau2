@@ -12,7 +12,7 @@ class Demo : public Application {
     Key verify;
     Key check;
   
-    Demo() : Application(), main(0, "main"), verify(0, "verif"), check(0, "check") { }
+    Demo(KVStore& kvs) : Application(kvs), main(0, "main"), verify(0, "verif"), check(0, "check") { }
   
     void run_() override {
       switch(this_node()) {

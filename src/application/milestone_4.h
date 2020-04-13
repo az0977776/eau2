@@ -202,7 +202,7 @@ class WordCount: public Application {
         // Map<String,size_t> all;
         const char* filename_;
 
-        WordCount(const char* filename) : Application(), in("data"), kbuf(new Key(0, "wc-map-")) { 
+        WordCount(const char* filename, KVStore& kvs) : Application(kvs), in("data"), kbuf(new Key(0, "wc-map-")) { 
             filename_ = filename;
         }
 
