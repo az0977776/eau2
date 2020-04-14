@@ -9,7 +9,7 @@ tests/unit_tests/lib/libgtest.a
 .vscode/settings.json
 tests/unit_tests/googletest-src
 .DS_Store
-data/*.libg
+data/*.ltgt
 
 
 
