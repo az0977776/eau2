@@ -70,7 +70,7 @@ class Set : public Object {
 
         /** Performs set union in place. */
         void union_(Set& from) {
-            abort_if_not(from.size_ == size_, "Union has two differently sized sets");
+            abort_if_not(from.size_ <= size_, "Union has two differently sized sets");
             for (size_t i = 0; i < from.size_; i++) {
                 if (from.test(i)) {
                     set(i);
@@ -196,7 +196,7 @@ class UsersTagger : public Reader {
  **************************************************************************/
 class Linus : public Application {
     public:
-        int DEGREES = 4;  // How many degrees of separation form linus?
+        int DEGREES = 7;  // How many degrees of separation form linus?
         // int LINUS = 4967;   // The uid of Linus (offset in the user df)
         // const char* PROJ = "data/projects.ltgt";
         // const char* USER = "data/users.ltgt";
@@ -208,9 +208,9 @@ class Linus : public Application {
         // const char* COMM = "data/generated_commits.txt";
 
         int LINUS = 0;
-        const char* PROJ = "data/4stage_5x5_generated_projects.txt";
-        const char* USER = "data/4stage_5x5_generated_users.txt";
-        const char* COMM = "data/4stage_5x5_generated_commits.txt";
+        const char* PROJ = "data/7stage_3x3_generated_projects.ltgt";
+        const char* USER = "data/7stage_3x3_generated_users.ltgt";
+        const char* COMM = "data/7stage_3x3_generated_commits.ltgt";
 
         DataFrame* projects; //  pid x project name  -- 'IS'
         DataFrame* users;  // uid x user name        -- 'IS'

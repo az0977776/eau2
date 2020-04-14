@@ -9,6 +9,7 @@
 #include "test_schema.h"
 #include "test_row.h"
 #include "test_dataframe.h"
+#include "test_linus.h"
 
 int main(int argc, char **argv) {
 

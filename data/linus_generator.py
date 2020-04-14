@@ -1,11 +1,11 @@
 #! /usr/bin/env python3
 
-version_name = '7stage_4x4_'
+version_name = '7stage_3x3_'
 
-USER_FILE_NAME = f"{version_name}generated_users.txt"
-PROJECT_FILE_NAME = f"{version_name}generated_projects.txt"
-COMMIT_FILE_NAME = f"{version_name}generated_commits.txt"
-ANSWER_FILE_NAME = f"{version_name}generated_answer.txt"
+USER_FILE_NAME = f"{version_name}generated_users.ltgt"
+PROJECT_FILE_NAME = f"{version_name}generated_projects.ltgt"
+COMMIT_FILE_NAME = f"{version_name}generated_commits.ltgt"
+ANSWER_FILE_NAME = f"{version_name}generated_answer.ltgt"
 
 def append_item(buf, item=""):
     buf.append("<")
@@ -47,8 +47,8 @@ def generate_projects(num_projects):
 def generate_commits():
     buf = []
     num_stages = 7
-    num_projects_per_user = 4
-    num_users_per_project = 4
+    num_projects_per_user = 3
+    num_users_per_project = 3
 
     project_id_count = 0
     user_id_count = 1
