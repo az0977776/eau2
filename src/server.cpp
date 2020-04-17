@@ -13,9 +13,9 @@
 
 // The server defaults to the local machine's ip address, ip addresses passed will be ignored
 int main() {
-    assert(get_thread_count() > 1);
+    assert(get_thread_count() > 0);
     Config config;
-    Server* s = new Server("127.0.0.1");
+    Server* s = new Server();
 
     // char buf[1024]; 
     // while(fgets(buf, 1024, stdin)) {

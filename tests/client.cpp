@@ -11,9 +11,9 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include "../../src/kvstore/network.h"
-#include "../../src/util/serial.h"
-#include "../../src/kvstore/keyvalue.h"
+#include "../src/kvstore/network.h"
+#include "../src/util/serial.h"
+#include "../src/kvstore/keyvalue.h"
 
 // this is a class that has a callback method to be called when a message is returned
 class ClientMessageHandler : public MessageHandler {
@@ -62,40 +62,9 @@ class ClientMessageHandler : public MessageHandler {
 
 
 int main(int argc, char** argv) {
-    const char *ip;
-    const char *default_ip = "127.0.0.1";
-    int port = 9000;
-    bool a_ip = false;
-    bool a_port = false;
-
-    int index = 1; // skipping the first argument
-    while (index < argc) {
-        if (strcmp(argv[index], "-ip") == 0) {
-            ip = argv[index + 1];
-            a_ip = true;
-            index+=2;
-        }
-        else if (strcmp(argv[index], "-port") == 0) {
-            port = atoi(argv[index + 1]);
-            a_port = true;
-            index+=2;
-        }
-        else {
-            printf("Invalid input argument\n");
-            exit(1);
-        }
-    }
-
-    if (!a_ip) {
-        ip = default_ip;
-        printf("defaulting ip to 127.0.0.1\n");
-    }
-    if (!a_port) {
-        printf("defaulting port to 9000\n");
-    }
 
     ClientMessageHandler msg_handler;
-    Client *c = new Client(ip, "127.0.0.1", &msg_handler);
+    Client *c = new Client(&msg_handler);
 
     // parent
     char buf[1024]; 

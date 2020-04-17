@@ -417,18 +417,16 @@ class Server : public Network {
     public:
         ListeningThread* listening_thread_;             // owens
         int server_fd_;                                 // the file descriptor that the server listens on
-        const char* server_ip_;
 
         pthread_mutex_t lock_;  // this locks both the array and the size t for both reads and writes
         struct sockaddr_in* client_info_;    // directory of clients
         size_t client_count_;
 
-        Server(const char* server_ip) : Network() {
+        Server() : Network() {
             abort_if_not(pthread_mutex_init(&lock_, NULL) == 0, "Client: Failed to create mutex");
             client_info_ = new sockaddr_in[config_.CLIENT_NUM];
-            server_ip_ = server_ip;
             client_count_ = 0;
-            server_fd_ = get_listen_socket(server_ip, config_.SERVER_LISTEN_PORT);
+            server_fd_ = get_listen_socket(config_.SERVER_IP, config_.SERVER_LISTEN_PORT);
 
             listening_thread_ = new ListeningThread(this);
             listening_thread_->start();
@@ -454,7 +452,7 @@ class Server : public Network {
             struct sockaddr_in addr;
             addr.sin_family = AF_INET;
             addr.sin_port = config_.SERVER_LISTEN_PORT;
-            abort_if_not(inet_pton(AF_INET, server_ip_, &addr.sin_addr) > 0, "Server failed to get sockaddr");
+            abort_if_not(inet_pton(AF_INET, config_.SERVER_IP, &addr.sin_addr) > 0, "Server failed to get sockaddr");
             return addr;
         }
 
@@ -616,8 +614,6 @@ class Server : public Network {
 // Client can also send and receive messages directly from other clients
 class Client : public Network {
     public:
-        const char *server_ip_;             // does not own
-        const char* client_ip_;             // does not own
         int listening_port_;                // the port number (in host byte order) 
         int client_listen_fd_;
         ListeningThread* listening_thread_; // owned
@@ -629,9 +625,7 @@ class Client : public Network {
 
         size_t current_node_idx_;           // what is the index of this node in the directory?
 
-        Client(const char* server_ip, const char* client_ip, MessageHandler* msg_handler) : Network() {
-            server_ip_ = server_ip;
-            client_ip_ = client_ip;
+        Client(MessageHandler* msg_handler) : Network() {
             msg_handler_ = msg_handler;
 
             abort_if_not(pthread_mutex_init(&lock_, NULL) == 0, "Client: Failed to create mutex");
@@ -639,7 +633,7 @@ class Client : public Network {
             directory_init_ = false;
 
             // spawns a child process that listens on any open listening port
-            client_listen_fd_ = get_listen_socket(client_ip_, 0);
+            client_listen_fd_ = get_listen_socket(config_.CLIENT_IP, 0);
 
             // save the listening port
             sockaddr_in client_listen_addr;
@@ -656,7 +650,7 @@ class Client : public Network {
             // blocks until current_dir_ is set
             // when this returns, this thread has the lock
             wait_for_dir_();
-            current_node_idx_ = current_dir_->index_of(client_ip, listening_port_);
+            current_node_idx_ = current_dir_->index_of(config_.CLIENT_IP, listening_port_);
             abort_if_not(current_node_idx_ < config_.CLIENT_NUM, "Failed to find client in directory");
 
             pthread_mutex_unlock(&lock_);
@@ -666,7 +660,7 @@ class Client : public Network {
             size_t resp_size;
             // deregister before closing anything
             Deregister deregister(get_sockaddr());
-            int server_fd = connect_to(server_ip_, config_.SERVER_LISTEN_PORT);
+            int server_fd = connect_to(config_.SERVER_IP, config_.SERVER_LISTEN_PORT);
             send_message(server_fd, deregister, resp_size);
             abort_if_not(resp_size == 0, "Client deregister: Got a response back");
 
@@ -719,7 +713,7 @@ class Client : public Network {
             struct sockaddr_in addr;
             addr.sin_family = AF_INET;
             addr.sin_port = listening_port_;
-            abort_if_not(inet_pton(AF_INET, client_ip_, &addr.sin_addr) > 0, "Server failed to get sockaddr");
+            abort_if_not(inet_pton(AF_INET, config_.CLIENT_IP, &addr.sin_addr) > 0, "Server failed to get sockaddr");
             return addr;
         }
 
@@ -767,7 +761,7 @@ class Client : public Network {
         // register this client against the server
         void server_register() {
             size_t resp_size;
-            int dest_sock = connect_to(server_ip_, config_.SERVER_LISTEN_PORT);
+            int dest_sock = connect_to(config_.SERVER_IP, config_.SERVER_LISTEN_PORT);
             Register message(get_sockaddr());
             send_message(dest_sock, message, resp_size);
             abort_if_not(resp_size == 0, "Server Register: Got a response back");

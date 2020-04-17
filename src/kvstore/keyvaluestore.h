@@ -66,7 +66,7 @@ class KVStore : public Object {
                 node_index_ = -1; 
 
                 // create network
-                client_ = new Client(config_.SERVER_IP, config_.CLIENT_IP, new KVStoreMessageHandler(this));
+                client_ = new Client(new KVStoreMessageHandler(this));
                 node_index_ = client_->get_index();
             } else {
                 // no server is running so don't start a client
