@@ -93,7 +93,7 @@ class Application : public Object{
                     break;
                 default:
                     // default color
-                    printf("\033[0m");
+                    reset_output_color();
                     break;
             }
         }
@@ -112,5 +112,6 @@ class Application : public Object{
             vprintf(fmt, ap);
             va_end(ap);
             reset_output_color();
+            fflush(stdout);
         }
 };
