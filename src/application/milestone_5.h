@@ -108,7 +108,7 @@ class SetUpdater : public Reader {
 class SetWriter: public Writer {
     public:
         Set& set_; // set to read from
-        int i_ = 0;  // position in set
+        size_t i_ = 0;  // position in set
 
         SetWriter(Set& set): set_(set) { }
 
@@ -120,7 +120,7 @@ class SetWriter: public Writer {
             return i_ == set_.size_;
         }
 
-        void visit(Row & row) { row.set(0, i_++); }
+        void visit(Row & row) { row.set(0, (int) i_++); }
 };
 
 /***************************************************************************
@@ -196,21 +196,21 @@ class UsersTagger : public Reader {
  **************************************************************************/
 class Linus : public Application {
     public:
-        int DEGREES = 7;  // How many degrees of separation form linus?
+        size_t DEGREES = 7;  // How many degrees of separation form linus?
         // int LINUS = 4967;   // The uid of Linus (offset in the user df)
         // const char* PROJ = "data/projects.ltgt";
         // const char* USER = "data/users.ltgt";
         // const char* COMM = "data/commits.ltgt";      
 
-        // int LINUS = 0;
-        // const char* PROJ = "data/generated_projects.txt";
-        // const char* USER = "data/generated_users.txt";
-        // const char* COMM = "data/generated_commits.txt";
-
         int LINUS = 0;
-        const char* PROJ = "data/7stage_3x3_generated_projects.ltgt";
-        const char* USER = "data/7stage_3x3_generated_users.ltgt";
-        const char* COMM = "data/7stage_3x3_generated_commits.ltgt";
+        const char* PROJ = "data/generated_projects2.txt";
+        const char* USER = "data/generated_users2.txt";
+        const char* COMM = "data/generated_commits2.txt";
+
+        // int LINUS = 0;
+        // const char* PROJ = "data/7stage_3x3_generated_projects.ltgt";
+        // const char* USER = "data/7stage_3x3_generated_users.ltgt";
+        // const char* COMM = "data/7stage_3x3_generated_commits.ltgt";
 
         DataFrame* projects; //  pid x project name  -- 'IS'
         DataFrame* users;  // uid x user name        -- 'IS'

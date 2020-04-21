@@ -59,7 +59,8 @@ class SOR : public Object {
             } else {
                 char buf[Config::BUFF_LEN];
                 fseek(file_, from - 1, SEEK_SET);
-                fgets(buf, Config::BUFF_LEN, file_);
+                char* ans = fgets(buf, Config::BUFF_LEN, file_);
+                abort_if_not(ans == buf || ans == nullptr, "Sorer.seek(): failed");
             }
         }
 

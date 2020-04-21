@@ -14,7 +14,7 @@ class Config : public Object {
 
         // network.h
         static const int SERVER_LISTEN_PORT = 8080;     // port that the server listens on
-        static const int MAX_PACKET_LENGTH = 1024;      // The maximum number of bytes in a package
+        static const int MAX_PACKET_LENGTH = 1024; // 1048576;      // The maximum number of bytes in a package
 
         // configuarable values
         size_t CLIENT_NUM = 3;                          // maximum number of clients
