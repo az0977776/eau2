@@ -197,15 +197,15 @@ class UsersTagger : public Reader {
 class Linus : public Application {
     public:
         size_t DEGREES = 7;  // How many degrees of separation form linus?
-        // int LINUS = 4967;   // The uid of Linus (offset in the user df)
-        // const char* PROJ = "data/projects.ltgt";
-        // const char* USER = "data/users.ltgt";
-        // const char* COMM = "data/commits.ltgt";      
+        int LINUS = 4967;   // The uid of Linus (offset in the user df)
+        const char* PROJ = "data/projects.ltgt";
+        const char* USER = "data/users.ltgt";
+        const char* COMM = "data/commits.ltgt";      
 
-        int LINUS = 0;
-        const char* PROJ = "data/generated_projects2.txt";
-        const char* USER = "data/generated_users2.txt";
-        const char* COMM = "data/generated_commits2.txt";
+        // int LINUS = 0;
+        // const char* PROJ = "data/generated_projects2.txt";
+        // const char* USER = "data/generated_users2.txt";
+        // const char* COMM = "data/generated_commits2.txt";
 
         // int LINUS = 0;
         // const char* PROJ = "data/7stage_3x3_generated_projects.ltgt";

@@ -280,7 +280,7 @@ class Network : public Object {
             int ret_fd;
             abort_if_not((ret_fd = socket(AF_INET, SOCK_STREAM, 0)) != 0, "get_listen_socket(): failed to create socket");
             // attaching socket to the listen ip and port
-            abort_if_not(setsockopt(ret_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, opt_len) == 0, "get_listen_socket(): failed to set socket options");
+            abort_if_not(setsockopt(ret_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, opt_len) != 0, "get_listen_socket(): failed to set socket options");
             adr.sin_family = AF_INET;
             abort_if_not(inet_pton(AF_INET, listen_ip, &adr.sin_addr) > 0, "get_listen_socket(): failed to convert string ip address to bytes");
             adr.sin_port = htons( listen_port ); // uses the listen port

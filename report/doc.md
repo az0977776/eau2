@@ -9,10 +9,10 @@ The eua2 system is a system that allows users to run applications involving data
 This layer is a distributed KV store running on multiple nodes. Each KV store node has part of the data, and the KV store nodes talk to exchange data when needed. All of the networking and concurrency control is hidden here.
 
 ### Server and Client startup/setup
-To setup the system, the registration server must first be started. Clients (KV Store nodes) will start after and connect to the server. The server keeps track of all registered clients and broadcasts all registered clients to each of the registered clients. This allows the clients to discover all other clients in the system.
+To setup the system, the registration server must first be running. Clients (KV Store nodes) will connect to the server. The server keeps track of all registered clients and broadcasts all registered clients to each of the registered clients. This allows the clients to discover all other clients in the system.
 
 ## Distributed DataFrame and Array Layer
-This layer provides abstractions like the distributed dataframe and arrays. 
+This layer provides abstractions like the distributed dataframe and arrays (columns). 
 
 ### Distributed DataFrame and Column
 A DataFrame represents multiple columns of data that each hold a specific type (`String`, `double`, `int`, `bool`). A column holds chunks that each hold actual values. A dataframe object does not actually hold the values in the columns directly. There is a lookup process when accessing data inside the dataframe.
@@ -22,7 +22,6 @@ A dataframe can hold multiple columns and each column holds keys to its chunks t
 ## Application Layer
 The user can operate on the dataframes. (Queries, Machine Learning, AI)
 
-
 # Implementation
 
 ## Networking
@@ -31,7 +30,7 @@ The user can operate on the dataframes. (Queries, Machine Learning, AI)
 A `Server` class handles registraion of `Client` objects. It holds a directory of clients and can broadcast the registered clients to all registered clients.
 
 ### Client
-A `Client` class holds connections to all other clients on the network. The client registers with the registration server on startup and discovers the other clients with the help of the server.
+A `Client` class holds the ip and port of all other clients on the network. The client registers with the registration server on startup and discovers the other clients with the help of the server.
 
 ### Network Protocol
 
@@ -78,13 +77,13 @@ if key does not exist on client 2:
 ## KVStore
 
 ### Key
-A `Key` object is used as key that is provided to a K/V store. A `Key` object contains a `String` object and a node index where the value associated with this `Key` is stored. `Key` is serialized to the format `<node index><key name(null terminated)>`.
+A `Key` object is used as key that is provided to a K/V store. A `Key` object contains a `String` object and a node index. The node index determines which key-value store node the value can be found on and the string key is what is used to find the value. `Key` is serialized to the format `<node index><key name(null terminated)>`.
 
 ### Value
 A `Value` object is what a `Key` object is associated with. It holds a `char*` byte array of serialized data and a `size_t` representing the size of the data.
 
 ### KeyValueStore
-The `KeyValueStore` class manages associations between `Key` objects and `Value` objects. A `KeyValueStore` on one process knows about `KeyValueStore` objects on other processes and can access `Value` objects on other processes. It is also possible to put `Value` objects into `KeyValueStore` objects on other processes. `KeyValueStore` objects each hold a `Client` object that is used for communication with other `KeyValueStore` objects.
+The `KeyValueStore` class manages associations between `Key` objects and `Value` objects. A `KeyValueStore` on one process knows about `KeyValueStore` objects on other nodes and can access `Value` objects on other nodes. It is also possible to put `Value` objects into `KeyValueStore` objects on other nodes. `KeyValueStore` objects each hold a `Client` object that is used for network communication with other `KeyValueStore` objects.
 
 Putting a key and value:
 ```cpp
@@ -104,7 +103,7 @@ Value* getAndWait(Key* k)
 ## DataFrame
 
 ### Chunk
-A `Chunk` represents a subset of a `Column` Object. A `Chunk` always holds a constant number of values. The value type depends on the type of the `Column` object it is a subset of. 
+A `Chunk` represents a subset of a `Column` Object. A `Chunk` always holds a constant number of values. A `Chunk` is a `Value` object that holds a subset of the `Column`. The `Chunk` is deserialized based on the type of the `Column` it is a part of. 
 
 The full key name to a chunk will have the format: `<dataframe_name>:<column_num(hex)>:<chunk_num(hex)>`. Example: `DATAFRAME_NAME:0x123ADF:0x321FDA`.
 
@@ -119,18 +118,18 @@ A `Column` object holds `Key` objects that are associated with `Value` objects r
 A `Column` is serialized with the format `<column type><column length><column name(null terminated)>[<key>...]`.
 
 #### Distribution Strategy
-Each Column knows the number of nodes with key-value stores that are available. Columns distribute their chunks to the nodes with equal distribution by sending chunks to the node with index equal to the chunk index modded by the total number of nodes. ie) If there are three nodes, then starting with the 0th chunk, every third chunk goes to the first node. This strategy also ensures that the Nth chunk of every column in a dataframe is distributed to the same node. This makes local mapping easier.
+Each `Column` knows the number of nodes with key-value stores that are available. Columns distribute their chunks to the nodes with even distribution by sending chunks to the node with index equal to the chunk index modded by the total number of nodes. ie) If there are three nodes, then starting with the 0th chunk, every third chunk goes to the first node. This strategy also ensures that the Nth chunk of every column in a dataframe is distributed to the same node. This makes local mapping easier.
 
 #### Caching 
-Each column caches a single chunk for both puts and gets to the key value store. The cache can be commited into the key value store when pushing elements onto the column. The cache is automatically commited into the key value store when the column gets from or puts into a different chunk index. The cache is effective when fetching elements or putting elements into the same chunk index. The cache is not effective if the user is randomly accessing the column. 
+Each column caches a single chunk for both puts and gets to the key value store. The cache can be commited into the key value store when pushing elements onto the column. The cache is effective when fetching elements or putting elements into the same chunk index (e.g. iterating over a dataframe row by row). The cache is not effective if the user is randomly accessing the column. 
 
-The column has a boolean flag to indicate if the cached chunk has been mutated. This flag is set during pushing elements onto the column. If the flag is not set, then the chunk is not committed when being swapped out.
+The column has a boolean flag to indicate if the cached chunk has been mutated. This flag is set when the cached chunk is mutated. If the flag is set when a new chunk is accessed, the cached chunk is commited before the new chunk is loaded. If the flag is not set, then the cached chunk is not committed when being swapped out.
 
 The `StringColumn` has an additional cache that is built on a `String` array. Because strings are not always the same size like the other data types, they cannot be easily serialized and deserialized from `String` objects into `Value` objects. The method of finding where to put strings in a value is by iterating through the entire value buffer of strings that are delimited by null bytes. This operation can get very expensive if the value buffers are very large. To prevent this find operation on each get and push, `String` objects are stored in an array cache and the entire array is serialized at once when needed.
 
 ### DataFrame
 The `DataFrame` class holds `Key` objects that are associated with `Value` objects representing `Column` objects that hold data. 
-A `DataFrame` is serialized with the format `<dataframe key><num column>[<column>...]`.
+A `DataFrame` is serialized with the format `<dataframe key><num column>[<column1>,<column2>,...]`.
 
 ## Application
 The `Application` class handles interactions with `DataFrame` objects using the `KeyValueStore`. The application is allowed to create `DataFrame` objects, store `DataFrame` objects in the `KeyValueStore` and retreive `DataFrame` objects from the `KeyValueStore`. 
@@ -156,7 +155,8 @@ There needs to be a `config.txt` file in the directory that the application is r
 Example config.txt
 ```
 CLIENT_NUM=3
-CLIENT_IP=127.0.0.1
+CLIENT_IP=192.168.1.86
+SERVER_IP=192.168.1.86
 CHUNK_SIZE=1024
 SERVER_UP_TIME=20
 ```
@@ -231,11 +231,6 @@ assert(fib.get_sum() == 146);
 delete df;
 ```
 
-# Open questions
-- What are the speed requirements of this project? Can we get speed requirements on the milestone examples?
-- Should each key value store have memory limitations that should be taken into account when distributing dataframes?
-- How should the client ip be determined? Currently a static constant set to `127.0.0.1` is passed into the Client constructor as the default ip.
-
 # Status
 What the team has:
 - Ability to read SoR format and create a DataFrame from SoR files
@@ -250,7 +245,6 @@ What the team has:
 - Create an application class
 - Create a Distributed DataFrame that can be stored across multiple nodes
 - Distribute the column chunks evenly across all nodes on the network
+- Created chunk cache for Columns
+- Created String array cache for StringColumns
 
-What needs to be done:
-- speed check (ensure every get is "fast")
-- improve on caching
