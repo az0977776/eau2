@@ -11,7 +11,6 @@ test: build
 	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test/tests/unit_tests && ./test_suite"
 
 valgrind: 
-	cp milestones/default_config.txt config.txt
 	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test && g++ -pthread -O3 -Wall -pedantic -std=c++11 tests/valgrind.cpp -o valgrind"
 	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test && valgrind --leak-check=yes --track-origins=yes ./valgrind"
 
@@ -20,30 +19,25 @@ server:
 	./server &
 
 milestone2_docker:
-	cp milestones/default_config.txt config.txt
 	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test && g++ -pthread -O3 -Wall -pedantic -std=c++11 milestones/milestone_2.cpp -o milestone2"
 	docker run -it -v `pwd`:/test cs4500:0.1 bash -c "cd test && ./milestone2"	
 
 milestone2: 
-	cp milestones/default_config.txt config.txt
 	g++ -pthread -O3 -Wall -pedantic -std=c++11 milestones/milestone_2.cpp -o milestone2 && ./milestone2
 
 milestone3: server
-	cp milestones/default_config.txt config.txt
 	g++ -pthread -O3 -Wall -pedantic -std=c++11 milestones/milestone_3.cpp -o milestone3
 	./milestone3 &
 	./milestone3 &
 	./milestone3
 
 milestone4: server
-	cp milestones/default_config.txt config.txt
 	g++ -pthread -O3 -Wall -pedantic -std=c++11 milestones/milestone_4.cpp -o milestone4
 	./milestone4 data/word_count.txt &
 	./milestone4 data/word_count.txt &
 	./milestone4 data/word_count.txt 
 
 milestone5: server
-	cp milestones/milestone5_config.txt config.txt
 	g++ -pthread -O3 -Wall -pedantic -std=c++11 milestones/milestone_5.cpp -o milestone5
 	./milestone5 &
 	./milestone5 &
@@ -51,7 +45,6 @@ milestone5: server
 	./milestone5	
 
 word_count: server
-	cp milestones/default_config.txt config.txt
 	g++ -pthread -O3 -Wall -pedantic -std=c++11 milestones/milestone_4.cpp -o milestone4
 	./milestone4 $(filename)&
 	./milestone4 $(filename)&

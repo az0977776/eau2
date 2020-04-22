@@ -1,0 +1,342 @@
+This is the linus app with degrees = 7, and reading the whole file
+
+
+chrisbarth@Chriss-MacBook-Pro-3 eau2 % make milestone5
+g++ -pthread -O3 -Wall -pedantic -std=c++11 src/server.cpp -o server
+./server &
+g++ -pthread -O3 -Wall -pedantic -std=c++11 milestones/milestone_5.cpp -o milestone5
+Server is now accepting client connections on port: 8080...
+./milestone5 &
+./milestone5 &
+./milestone5 &
+./milestone5
+[SERVER] Registering new client ip: 192.168.1.86:64056
+[SERVER] Current client ips: 192.168.1.86:64056,
+[SERVER] Currently 1 clients are connected
+[SERVER] Registering new client ip: 192.168.1.86:64057
+[SERVER] Current client ips: 192.168.1.86:64056,192.168.1.86:64057,
+[SERVER] Currently 2 clients are connected
+[SERVER] Registering new client ip: 192.168.1.86:64058
+[SERVER] Current client ips: 192.168.1.86:64056,192.168.1.86:64057,192.168.1.86:64058,
+[SERVER] Currently 3 clients are connected
+[SERVER] Registering new client ip: 192.168.1.86:64059
+[SERVER] Current client ips: 192.168.1.86:64056,192.168.1.86:64057,192.168.1.86:64058,192.168.1.86:64059,
+[SERVER] Currently 4 clients are connected
+Reading...
+NODE 0:     125486231 projects
+NODE 0:     32411734 users
+NODE 0:     117936711 commits
+NODE 0: Stage 0
+NODE 1: Stage 0
+NODE 2: Stage 0
+NODE 3: Stage 0
+NODE 0:     About to merge new Projects
+NODE 1:     About to merge new Projects
+NODE 1:     sending 1579 / 125486231 elements to master node
+NODE 2:     About to merge new Projects
+NODE 2:     sending 1511 / 125486231 elements to master node
+NODE 3:     About to merge new Projects
+NODE 3:     sending 1566 / 125486231 elements to master node
+NODE 0:     received delta of 1579 elements from node 1
+NODE 0:     received delta of 1511 elements from node 2
+NODE 0:     received delta of 1566 elements from node 3
+NODE 0:     storing 6164 / 125486231 merged elements
+NODE 1:     receiving 6164 merged elements
+NODE 2:     receiving 6164 merged elements
+NODE 3:     receiving 6164 merged elements
+NODE 0:     About to merge new Users
+NODE 1:     About to merge new Users
+NODE 1:     sending 21484 / 32411734 elements to master node
+NODE 2:     About to merge new Users
+NODE 2:     sending 19375 / 32411734 elements to master node
+NODE 3:     About to merge new Users
+NODE 3:     sending 21138 / 32411734 elements to master node
+NODE 0:     received delta of 21484 elements from node 1
+NODE 0:     received delta of 19375 elements from node 2
+NODE 0:     received delta of 21138 elements from node 3
+NODE 0:     storing 36627 / 32411734 merged elements
+NODE 0:     after stage 0:
+NODE 0:         tagged projects: 6164 / 125486231
+NODE 0:         tagged users: 36627 / 32411734
+NODE 0: Stage 1
+NODE 1:     receiving 36627 merged elements
+NODE 2:     receiving 36627 merged elements
+NODE 1:     after stage 0:
+NODE 1:         tagged projects: 6164 / 125486231
+NODE 1:         tagged users: 36627 / 32411734
+NODE 1: Stage 1
+NODE 2:     after stage 0:
+NODE 2:         tagged projects: 6164 / 125486231
+NODE 2:         tagged users: 36627 / 32411734
+NODE 2: Stage 1
+NODE 3:     receiving 36627 merged elements
+NODE 3:     after stage 0:
+NODE 3:         tagged projects: 6164 / 125486231
+NODE 3:         tagged users: 36627 / 32411734
+NODE 3: Stage 1
+NODE 0:     About to merge new Projects
+NODE 1:     About to merge new Projects
+NODE 1:     sending 354368 / 125486231 elements to master node
+NODE 2:     About to merge new Projects
+NODE 2:     sending 352821 / 125486231 elements to master node
+NODE 3:     About to merge new Projects
+NODE 3:     sending 353905 / 125486231 elements to master node
+NODE 0:     received delta of 354368 elements from node 1
+NODE 0:     received delta of 352821 elements from node 2
+NODE 0:     received delta of 353905 elements from node 3
+NODE 0:     storing 1212262 / 125486231 merged elements
+NODE 1:     receiving 1212262 merged elements
+NODE 2:     receiving 1212262 merged elements
+NODE 3:     receiving 1212262 merged elements
+NODE 0:     About to merge new Users
+NODE 2:     About to merge new Users
+NODE 2:     sending 528789 / 32411734 elements to master node
+NODE 1:     About to merge new Users
+NODE 1:     sending 537440 / 32411734 elements to master node
+NODE 3:     About to merge new Users
+NODE 3:     sending 541064 / 32411734 elements to master node
+NODE 0:     received delta of 537440 elements from node 1
+NODE 0:     received delta of 528789 elements from node 2
+NODE 0:     received delta of 541064 elements from node 3
+NODE 0:     storing 1450973 / 32411734 merged elements
+NODE 0:     after stage 1:
+NODE 0:         tagged projects: 1218426 / 125486231
+NODE 0:         tagged users: 1487600 / 32411734
+NODE 0: Stage 2
+NODE 2:     receiving 1450973 merged elements
+NODE 1:     receiving 1450973 merged elements
+NODE 3:     receiving 1450973 merged elements
+NODE 1:     after stage 1:
+NODE 1:         tagged projects: 1218426 / 125486231
+NODE 1:         tagged users: 1487600 / 32411734
+NODE 2:     after stage 1:
+NODE 2:         tagged projects: 1218426 / 125486231
+NODE 2:         tagged users: 1487600 / 32411734
+NODE 1: Stage 2
+NODE 2: Stage 2
+NODE 3:     after stage 1:
+NODE 3:         tagged projects: 1218426 / 125486231
+NODE 3:         tagged users: 1487600 / 32411734
+NODE 3: Stage 2
+NODE 0:     About to merge new Projects
+NODE 2:     About to merge new Projects
+NODE 2:     sending 5164532 / 125486231 elements to master node
+NODE 1:     About to merge new Projects
+NODE 1:     sending 5159720 / 125486231 elements to master node
+NODE 3:     About to merge new Projects
+NODE 3:     sending 5159756 / 125486231 elements to master node
+NODE 0:     received delta of 5159720 elements from node 1
+NODE 0:     received delta of 5164532 elements from node 2
+NODE 0:     received delta of 5159756 elements from node 3
+NODE 0:     storing 18012852 / 125486231 merged elements
+NODE 1:     receiving 18012852 merged elements
+NODE 2:     receiving 18012852 merged elements
+NODE 3:     receiving 18012852 merged elements
+NODE 0:     About to merge new Users
+NODE 2:     About to merge new Users
+NODE 2:     sending 1232354 / 32411734 elements to master node
+NODE 3:     About to merge new Users
+NODE 3:     sending 1233141 / 32411734 elements to master node
+NODE 1:     About to merge new Users
+NODE 1:     sending 1234502 / 32411734 elements to master node
+NODE 0:     received delta of 1234502 elements from node 1
+NODE 0:     received delta of 1232354 elements from node 2
+NODE 0:     received delta of 1233141 elements from node 3
+NODE 0:     storing 3488007 / 32411734 merged elements
+NODE 0:     after stage 2:
+NODE 0:         tagged projects: 19231278 / 125486231
+NODE 0:         tagged users: 4975607 / 32411734
+NODE 0: Stage 3
+NODE 2:     receiving 3488007 merged elements
+NODE 3:     receiving 3488007 merged elements
+NODE 1:     receiving 3488007 merged elements
+NODE 2:     after stage 2:
+NODE 2:         tagged projects: 19231278 / 125486231
+NODE 2:         tagged users: 4975607 / 32411734
+NODE 3:     after stage 2:
+NODE 3:         tagged projects: 19231278 / 125486231
+NODE 3:         tagged users: 4975607 / 32411734
+NODE 2: Stage 3
+NODE 3: Stage 3
+NODE 1:     after stage 2:
+NODE 1:         tagged projects: 19231278 / 125486231
+NODE 1:         tagged users: 4975607 / 32411734
+NODE 1: Stage 3
+NODE 0:     About to merge new Projects
+NODE 2:     About to merge new Projects
+NODE 2:     sending 4298271 / 125486231 elements to master node
+NODE 1:     About to merge new Projects
+NODE 1:     sending 4269186 / 125486231 elements to master node
+NODE 3:     About to merge new Projects
+NODE 3:     sending 4281524 / 125486231 elements to master node
+NODE 0:     received delta of 4269186 elements from node 1
+NODE 0:     received delta of 4298271 elements from node 2
+NODE 0:     received delta of 4281524 elements from node 3
+NODE 0:     storing 15615372 / 125486231 merged elements
+NODE 2:     receiving 15615372 merged elements
+NODE 1:     receiving 15615372 merged elements
+NODE 3:     receiving 15615372 merged elements
+NODE 0:     About to merge new Users
+NODE 2:     About to merge new Users
+NODE 2:     sending 753592 / 32411734 elements to master node
+NODE 3:     About to merge new Users
+NODE 3:     sending 750526 / 32411734 elements to master node
+NODE 1:     About to merge new Users
+NODE 1:     sending 755347 / 32411734 elements to master node
+NODE 0:     received delta of 755347 elements from node 1
+NODE 0:     received delta of 753592 elements from node 2
+NODE 0:     received delta of 750526 elements from node 3
+NODE 0:     storing 2313602 / 32411734 merged elements
+NODE 0:     after stage 3:
+NODE 0:         tagged projects: 34846650 / 125486231
+NODE 0:         tagged users: 7289209 / 32411734
+NODE 0: Stage 4
+NODE 2:     receiving 2313602 merged elements
+NODE 3:     receiving 2313602 merged elements
+NODE 1:     receiving 2313602 merged elements
+NODE 2:     after stage 3:
+NODE 2:         tagged projects: 34846650 / 125486231
+NODE 2:         tagged users: 7289209 / 32411734
+NODE 2: Stage 4
+NODE 1:     after stage 3:
+NODE 1:         tagged projects: 34846650 / 125486231
+NODE 1:         tagged users: 7289209 / 32411734
+NODE 3:     after stage 3:
+NODE 3:         tagged projects: 34846650 / 125486231
+NODE 3:         tagged users: 7289209 / 32411734
+NODE 1: Stage 4
+NODE 3: Stage 4
+NODE 0:     About to merge new Projects
+NODE 3:     About to merge new Projects
+NODE 3:     sending 1522552 / 125486231 elements to master node
+NODE 2:     About to merge new Projects
+NODE 2:     sending 1526289 / 125486231 elements to master node
+NODE 1:     About to merge new Projects
+NODE 1:     sending 1519927 / 125486231 elements to master node
+NODE 0:     received delta of 1519927 elements from node 1
+NODE 0:     received delta of 1526289 elements from node 2
+NODE 0:     received delta of 1522552 elements from node 3
+NODE 0:     storing 5620769 / 125486231 merged elements
+NODE 1:     receiving 5620769 merged elements
+NODE 2:     receiving 5620769 merged elements
+NODE 3:     receiving 5620769 merged elements
+NODE 0:     About to merge new Users
+NODE 2:     About to merge new Users
+NODE 2:     sending 269766 / 32411734 elements to master node
+NODE 3:     About to merge new Users
+NODE 3:     sending 268405 / 32411734 elements to master node
+NODE 1:     About to merge new Users
+NODE 1:     sending 270308 / 32411734 elements to master node
+NODE 0:     received delta of 270308 elements from node 1
+NODE 0:     received delta of 269766 elements from node 2
+NODE 0:     received delta of 268405 elements from node 3
+NODE 0:     storing 859110 / 32411734 merged elements
+NODE 0:     after stage 4:
+NODE 0:         tagged projects: 40467419 / 125486231
+NODE 0:         tagged users: 8148319 / 32411734
+NODE 0: Stage 5
+NODE 2:     receiving 859110 merged elements
+NODE 3:     receiving 859110 merged elements
+NODE 1:     receiving 859110 merged elements
+NODE 2:     after stage 4:
+NODE 2:         tagged projects: 40467419 / 125486231
+NODE 2:         tagged users: 8148319 / 32411734
+NODE 3:     after stage 4:
+NODE 3:         tagged projects: 40467419 / 125486231
+NODE 3:         tagged users: 8148319 / 32411734
+NODE 2: Stage 5
+NODE 1:     after stage 4:
+NODE 1:         tagged projects: 40467419 / 125486231
+NODE 1:         tagged users: 8148319 / 32411734
+NODE 3: Stage 5
+NODE 1: Stage 5
+NODE 0:     About to merge new Projects
+NODE 1:     About to merge new Projects
+NODE 1:     sending 482110 / 125486231 elements to master node
+NODE 3:     About to merge new Projects
+NODE 3:     sending 483743 / 125486231 elements to master node
+NODE 2:     About to merge new Projects
+NODE 2:     sending 483492 / 125486231 elements to master node
+NODE 0:     received delta of 482110 elements from node 1
+NODE 0:     received delta of 483492 elements from node 2
+NODE 0:     received delta of 483743 elements from node 3
+NODE 0:     storing 1789598 / 125486231 merged elements
+NODE 1:     receiving 1789598 merged elements
+NODE 3:     receiving 1789598 merged elements
+NODE 2:     receiving 1789598 merged elements
+NODE 0:     About to merge new Users
+NODE 1:     About to merge new Users
+NODE 1:     sending 87764 / 32411734 elements to master node
+NODE 3:     About to merge new Users
+NODE 3:     sending 86826 / 32411734 elements to master node
+NODE 2:     About to merge new Users
+NODE 2:     sending 87127 / 32411734 elements to master node
+NODE 0:     received delta of 87764 elements from node 1
+NODE 0:     received delta of 87127 elements from node 2
+NODE 0:     received delta of 86826 elements from node 3
+NODE 0:     storing 280852 / 32411734 merged elements
+NODE 0:     after stage 5:
+NODE 0:         tagged projects: 42257017 / 125486231
+NODE 0:         tagged users: 8429171 / 32411734
+NODE 0: Stage 6
+NODE 3:     receiving 280852 merged elements
+NODE 1:     receiving 280852 merged elements
+NODE 2:     receiving 280852 merged elements
+NODE 1:     after stage 5:
+NODE 1:         tagged projects: 42257017 / 125486231
+NODE 1:         tagged users: 8429171 / 32411734
+NODE 3:     after stage 5:
+NODE 3:         tagged projects: 42257017 / 125486231
+NODE 3:         tagged users: 8429171 / 32411734
+NODE 1: Stage 6
+NODE 3: Stage 6
+NODE 2:     after stage 5:
+NODE 2:         tagged projects: 42257017 / 125486231
+NODE 2:         tagged users: 8429171 / 32411734
+NODE 2: Stage 6
+NODE 0:     About to merge new Projects
+NODE 1:     About to merge new Projects
+NODE 1:     sending 154150 / 125486231 elements to master node
+NODE 3:     About to merge new Projects
+NODE 3:     sending 153006 / 125486231 elements to master node
+NODE 2:     About to merge new Projects
+NODE 2:     sending 153497 / 125486231 elements to master node
+NODE 0:     received delta of 154150 elements from node 1
+NODE 0:     received delta of 153497 elements from node 2
+NODE 0:     received delta of 153006 elements from node 3
+NODE 0:     storing 570513 / 125486231 merged elements
+NODE 3:     receiving 570513 merged elements
+NODE 1:     receiving 570513 merged elements
+NODE 2:     receiving 570513 merged elements
+NODE 0:     About to merge new Users
+NODE 3:     About to merge new Users
+NODE 3:     sending 28330 / 32411734 elements to master node
+NODE 1:     About to merge new Users
+NODE 1:     sending 29045 / 32411734 elements to master node
+NODE 2:     About to merge new Users
+NODE 2:     sending 28765 / 32411734 elements to master node
+NODE 0:     received delta of 29045 elements from node 1
+NODE 0:     received delta of 28765 elements from node 2
+NODE 0:     received delta of 28330 elements from node 3
+NODE 0:     storing 92812 / 32411734 merged elements
+NODE 0:     after stage 6:
+NODE 0:         tagged projects: 42827530 / 125486231
+NODE 0:         tagged users: 8521983 / 32411734
+NODE 0: Milestone5: DONE
+NODE 3:     receiving 92812 merged elements
+NODE 1:     receiving 92812 merged elements
+NODE 2:     receiving 92812 merged elements
+NODE 3:     after stage 6:
+NODE 3:         tagged projects: 42827530 / 125486231
+NODE 3:         tagged users: 8521983 / 32411734
+NODE 1:     after stage 6:
+NODE 1:         tagged projects: 42827530 / 125486231
+NODE 1:         tagged users: 8521983 / 32411734
+NODE 3: Milestone5: DONE
+NODE 2:     after stage 6:
+NODE 2:         tagged projects: 42827530 / 125486231
+NODE 2:         tagged users: 8521983 / 32411734
+NODE 1: Milestone5: DONE
+NODE 2: Milestone5: DONE
+
+
